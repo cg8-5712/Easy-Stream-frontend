@@ -123,7 +123,7 @@ export function DashboardPage() {
                   </div>
                   <h2 className="text-lg font-semibold text-dark-100">正在直播</h2>
                 </div>
-                <Link to="/streams">
+                <Link to="/admin/streams">
                   <Button variant="ghost" size="sm">
                     查看全部
                     <ArrowUpRight className="w-4 h-4 ml-1" />
@@ -135,7 +135,7 @@ export function DashboardPage() {
                 <div className="text-center py-12">
                   <Radio className="w-12 h-12 text-dark-600 mx-auto mb-4" />
                   <p className="text-dark-500">暂无正在进行的直播</p>
-                  <Link to="/streams">
+                  <Link to="/admin/streams">
                     <Button variant="outline" size="sm" className="mt-4">
                       <Plus className="w-4 h-4 mr-2" />
                       创建直播

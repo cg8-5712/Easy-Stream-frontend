@@ -24,7 +24,7 @@ export function LoginPage() {
     try {
       const response = await authService.login(formData)
       setAuth(response.user, response.access_token, response.refresh_token)
-      navigate('/dashboard')
+      navigate('/admin/dashboard')
     } catch (err: unknown) {
       const error = err as { response?: { data?: { error?: string } } }
       setError(error.response?.data?.error || '登录失败，请检查用户名和密码')

@@ -10,9 +10,9 @@ import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/stores'
 
 const navigation = [
-  { name: '仪表盘', href: '/dashboard', icon: LayoutDashboard },
-  { name: '直播管理', href: '/streams', icon: Radio },
-  { name: '系统设置', href: '/settings', icon: Settings },
+  { name: '仪表盘', href: '/admin/dashboard', icon: LayoutDashboard },
+  { name: '直播管理', href: '/admin/streams', icon: Radio },
+  { name: '系统设置', href: '/admin/settings', icon: Settings },
 ]
 
 export function Sidebar() {
@@ -21,14 +21,14 @@ export function Sidebar() {
 
   const handleLogout = () => {
     clearAuth()
-    window.location.href = '/login'
+    window.location.href = '/'
   }
 
   return (
     <aside className="fixed left-0 top-0 h-screen w-64 bg-dark-900/50 backdrop-blur-xl border-r border-dark-800 flex flex-col z-40">
       {/* Logo */}
       <div className="h-16 flex items-center px-6 border-b border-dark-800">
-        <Link to="/dashboard" className="flex items-center gap-3">
+        <Link to="/admin/dashboard" className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-gold-400 to-gold-600 flex items-center justify-center shadow-gold">
             <Tv className="w-5 h-5 text-dark-950" />
           </div>
