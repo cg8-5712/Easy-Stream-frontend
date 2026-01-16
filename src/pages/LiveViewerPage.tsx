@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import {
   ArrowLeft,
   Users,
@@ -16,18 +16,19 @@ import {
   ExternalLink,
 } from 'lucide-react'
 import { Button, Card, Input, StatusBadge, Badge, Modal } from '@/components/ui'
-import { streamService } from '@/services'
+import { streamService, shareLinkService } from '@/services'
 import { formatDate, formatNumber } from '@/lib/utils'
 import type { Stream } from '@/types'
 
 export function LiveViewerPage() {
   const { streamKey } = useParams<{ streamKey: string }>()
+  const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const [stream, setStream] = useState<Stream | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [showPasswordModal, setShowPasswordModal] = useState(false)
-  const [password, setPassword] = useState('')
+  const [showShareCodeModal, setShowShareCodeModal] = useState(false)
+  const [shareCode, setShareCode] = useState('')
   const [accessToken, setAccessToken] = useState<string | null>(null)
 
   const fetchStream = async (token?: string) => {
@@ -40,8 +41,8 @@ export function LiveViewerPage() {
     } catch (err: unknown) {
       const error = err as { response?: { status?: number; data?: { error?: string } } }
       if (error.response?.status === 403) {
-        setShowPasswordModal(true)
-        setError('此直播需要密码访问')
+        setShowShareCodeModal(true)
+        setError('此直播需要分享码访问')
       } else if (error.response?.status === 404) {
         setError('直播不存在')
       } else {
@@ -52,24 +53,52 @@ export function LiveViewerPage() {
     }
   }
 
+  // Handle share link token from URL or access_token
   useEffect(() => {
-    fetchStream()
-    const interval = setInterval(() => fetchStream(), 10000) // Refresh every 10s
+    const shareToken = searchParams.get('share_token')
+    const urlAccessToken = searchParams.get('access_token')
+
+    if (urlAccessToken) {
+      // Use access_token from URL directly
+      setAccessToken(urlAccessToken)
+      fetchStream(urlAccessToken)
+    } else if (shareToken) {
+      // Verify share link and get access token
+      shareLinkService.verifyShareLink(shareToken)
+        .then((result) => {
+          setAccessToken(result.token)
+          fetchStream(result.token)
+        })
+        .catch(() => {
+          setError('分享链接无效或已过期')
+          setLoading(false)
+        })
+    } else {
+      fetchStream()
+    }
+  }, [streamKey, searchParams])
+
+  // Refresh stream data periodically
+  useEffect(() => {
+    if (!accessToken && !searchParams.get('share_token')) return
+    const interval = setInterval(() => fetchStream(), 10000)
     return () => clearInterval(interval)
   }, [streamKey, accessToken])
 
-  const handlePasswordSubmit = async (e: React.FormEvent) => {
+  const handleShareCodeSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!streamKey) return
+    if (!shareCode.trim()) return
 
     try {
-      const result = await streamService.verifyPassword(streamKey, { password })
+      const result = await streamService.verifyShareCode({ share_code: shareCode.trim() })
       setAccessToken(result.token)
-      setShowPasswordModal(false)
-      setPassword('')
-      fetchStream(result.token)
+      setShowShareCodeModal(false)
+      setShareCode('')
+      setError(null)
+      // Navigate to the stream with access token
+      navigate(`/live/${result.stream_key}?access_token=${result.token}`)
     } catch {
-      setError('密码错误')
+      setError('分享码无效')
     }
   }
 
@@ -94,7 +123,7 @@ export function LiveViewerPage() {
     )
   }
 
-  if (error && !showPasswordModal) {
+  if (error && !showShareCodeModal) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -346,24 +375,25 @@ export function LiveViewerPage() {
         </div>
       </div>
 
-      {/* Password Modal */}
+      {/* Share Code Modal */}
       <Modal
-        isOpen={showPasswordModal}
+        isOpen={showShareCodeModal}
         onClose={() => navigate(-1)}
         title="私有直播"
         size="sm"
       >
-        <form onSubmit={handlePasswordSubmit}>
+        <form onSubmit={handleShareCodeSubmit}>
           <p className="text-dark-400 mb-4">
-            此直播为私有直播，请输入访问密码
+            此直播为私有直播，请输入 8 位分享码
           </p>
           <Input
-            type="password"
-            placeholder="请输入密码"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            type="text"
+            placeholder="请输入分享码"
+            value={shareCode}
+            onChange={(e) => setShareCode(e.target.value)}
             icon={<Lock className="w-4 h-4" />}
-            error={error === '密码错误' ? error : undefined}
+            error={error === '分享码无效' ? error : undefined}
+            maxLength={8}
           />
           <div className="flex gap-3 justify-end mt-6">
             <Button type="button" variant="ghost" onClick={() => navigate(-1)}>

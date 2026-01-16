@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import {
   Plus,
   Search,
@@ -12,9 +12,11 @@ import {
   StopCircle,
   Filter,
   Play,
+  Settings,
+  Lock,
 } from 'lucide-react'
 import { Header } from '@/components/layout'
-import { Card, Button, Input, StatusBadge, Modal } from '@/components/ui'
+import { Card, Button, Input, StatusBadge, Badge, Modal } from '@/components/ui'
 import { streamService } from '@/services'
 import { formatDate } from '@/lib/utils'
 import type { Stream, CreateStreamRequest, StreamStatus } from '@/types'
@@ -22,6 +24,7 @@ import type { Stream, CreateStreamRequest, StreamStatus } from '@/types'
 type TimeRange = 'all' | 'past' | 'current' | 'future'
 
 export function StreamsPage() {
+  const navigate = useNavigate()
   const [streams, setStreams] = useState<Stream[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
@@ -212,11 +215,18 @@ export function StreamsPage() {
                 </thead>
                 <tbody>
                   {filteredStreams.map((stream) => (
-                    <tr key={stream.id}>
+                    <tr key={stream.id} className="cursor-pointer hover:bg-dark-800/50" onClick={() => navigate(`/admin/streams/${stream.id}`)}>
                       <td>
-                        <div>
-                          <p className="font-medium text-dark-100">{stream.name}</p>
-                          <p className="text-sm text-dark-500">{stream.streamer_name}</p>
+                        <div className="flex items-center gap-2">
+                          <div>
+                            <p className="font-medium text-dark-100">{stream.name}</p>
+                            <p className="text-sm text-dark-500">{stream.streamer_name}</p>
+                          </div>
+                          {stream.visibility === 'private' && (
+                            <Badge variant="warning" className="text-xs">
+                              <Lock className="w-3 h-3" />
+                            </Badge>
+                          )}
                         </div>
                       </td>
                       <td>
@@ -258,7 +268,7 @@ export function StreamsPage() {
                           )}
                         </div>
                       </td>
-                      <td>
+                      <td onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-2">
                           {stream.status === 'pushing' && (
                             <Link to={`/live/${stream.stream_key}`}>
@@ -267,6 +277,14 @@ export function StreamsPage() {
                               </Button>
                             </Link>
                           )}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => navigate(`/admin/streams/${stream.id}`)}
+                            title="查看详情"
+                          >
+                            <Settings className="w-4 h-4" />
+                          </Button>
                           <div className="relative">
                             <Button
                               variant="ghost"
@@ -461,14 +479,11 @@ function CreateStreamModal({
         </div>
 
         {formData.visibility === 'private' && (
-          <Input
-            label="访问密码"
-            type="password"
-            placeholder="设置访问密码"
-            value={formData.password || ''}
-            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-            required
-          />
+          <div className="p-3 rounded-lg bg-gold-500/10 border border-gold-500/20">
+            <p className="text-sm text-gold-400">
+              私有直播创建后将自动生成 8 位分享码，可在直播详情页查看和管理
+            </p>
+          </div>
         )}
 
         <div className="grid grid-cols-2 gap-4">

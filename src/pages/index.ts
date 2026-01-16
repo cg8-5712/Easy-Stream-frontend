@@ -1,5 +1,6 @@
 export { LoginPage } from './LoginPage'
 export { DashboardPage } from './DashboardPage'
 export { StreamsPage } from './StreamsPage'
+export { StreamDetailPage } from './StreamDetailPage'
 export { LiveViewerPage } from './LiveViewerPage'
 export { GuestHomePage } from './GuestHomePage'

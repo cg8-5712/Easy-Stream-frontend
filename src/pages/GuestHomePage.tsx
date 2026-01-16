@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams, useNavigate } from 'react-router-dom'
 import {
   Radio,
   Eye,
@@ -8,22 +8,23 @@ import {
   Play,
   Users,
   ArrowRight,
-  Search,
 } from 'lucide-react'
 import { Card, Button, Input, Modal } from '@/components/ui'
-import { streamService } from '@/services'
+import { streamService, shareLinkService } from '@/services'
 import { formatDate, formatNumber } from '@/lib/utils'
 import type { Stream } from '@/types'
 
 export function GuestHomePage() {
+  const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
   const [liveStreams, setLiveStreams] = useState<Stream[]>([])
   const [loading, setLoading] = useState(true)
-  const [showPasswordModal, setShowPasswordModal] = useState(false)
-  const [streamKey, setStreamKey] = useState('')
-  const [password, setPassword] = useState('')
+  const [showShareCodeModal, setShowShareCodeModal] = useState(false)
+  const [shareCode, setShareCode] = useState('')
   const [verifying, setVerifying] = useState(false)
   const [verifyError, setVerifyError] = useState('')
   const [verifiedStream, setVerifiedStream] = useState<Stream | null>(null)
+  const [verifiedAccessToken, setVerifiedAccessToken] = useState<string | null>(null)
 
   useEffect(() => {
     const fetchLiveStreams = async () => {
@@ -46,9 +47,30 @@ export function GuestHomePage() {
     return () => clearInterval(interval)
   }, [])
 
-  const handleVerifyPassword = async () => {
-    if (!streamKey.trim() || !password.trim()) {
-      setVerifyError('请输入直播密钥和密码')
+  // Handle share link token from URL
+  useEffect(() => {
+    const shareToken = searchParams.get('share_token')
+    if (shareToken) {
+      setVerifying(true)
+      shareLinkService.verifyShareLink(shareToken)
+        .then((result) => {
+          // Store access token and redirect to live page
+          sessionStorage.setItem(`stream_token_${result.stream_key}`, result.token)
+          navigate(`/live/${result.stream_key}?access_token=${result.token}`)
+        })
+        .catch(() => {
+          setVerifyError('分享链接无效或已过期')
+          setShowShareCodeModal(true)
+        })
+        .finally(() => {
+          setVerifying(false)
+        })
+    }
+  }, [searchParams, navigate])
+
+  const handleVerifyShareCode = async () => {
+    if (!shareCode.trim()) {
+      setVerifyError('请输入分享码')
       return
     }
 
@@ -56,18 +78,21 @@ export function GuestHomePage() {
     setVerifyError('')
 
     try {
-      const result = await streamService.verifyPassword(streamKey.trim(), { password })
-      // 验证成功，获取直播信息
-      const stream = await streamService.getStreamByKey(streamKey.trim(), result.token)
-      setVerifiedStream(stream)
+      const result = await streamService.verifyShareCode({ share_code: shareCode.trim() })
+      setVerifiedAccessToken(result.token)
       // 保存 token 到 sessionStorage
-      sessionStorage.setItem(`stream_token_${streamKey.trim()}`, result.token)
+      sessionStorage.setItem(`stream_token_${result.stream_key}`, result.token)
+      // 获取直播信息
+      const stream = await streamService.getStreamByKey(result.stream_key, result.token)
+      setVerifiedStream(stream)
     } catch (error: unknown) {
       const err = error as { response?: { status?: number } }
-      if (err.response?.status === 401) {
-        setVerifyError('密码错误')
-      } else if (err.response?.status === 404) {
-        setVerifyError('直播不存在')
+      if (err.response?.status === 404) {
+        setVerifyError('分享码无效')
+      } else if (err.response?.status === 410) {
+        setVerifyError('直播已结束')
+      } else if (err.response?.status === 403) {
+        setVerifyError('分享码使用次数已达上限')
       } else {
         setVerifyError('验证失败，请稍后重试')
       }
@@ -76,12 +101,12 @@ export function GuestHomePage() {
     }
   }
 
-  const closePasswordModal = () => {
-    setShowPasswordModal(false)
-    setStreamKey('')
-    setPassword('')
+  const closeShareCodeModal = () => {
+    setShowShareCodeModal(false)
+    setShareCode('')
     setVerifyError('')
     setVerifiedStream(null)
+    setVerifiedAccessToken(null)
   }
 
   if (loading) {
@@ -114,7 +139,7 @@ export function GuestHomePage() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setShowPasswordModal(true)}
+                onClick={() => setShowShareCodeModal(true)}
               >
                 <Lock className="w-4 h-4 mr-2" />
                 私有直播
@@ -137,7 +162,7 @@ export function GuestHomePage() {
             正在直播
           </h2>
           <p className="text-dark-400 max-w-2xl mx-auto">
-            观看精彩的直播内容，或使用密码访问私有直播
+            观看精彩的直播内容，或使用分享码访问私有直播
           </p>
         </div>
 
@@ -163,7 +188,7 @@ export function GuestHomePage() {
             <Radio className="w-16 h-16 text-dark-600 mx-auto mb-4" />
             <h3 className="text-xl font-medium text-dark-300 mb-2">暂无直播</h3>
             <p className="text-dark-500 mb-6">当前没有正在进行的公开直播</p>
-            <Button variant="outline" onClick={() => setShowPasswordModal(true)}>
+            <Button variant="outline" onClick={() => setShowShareCodeModal(true)}>
               <Lock className="w-4 h-4 mr-2" />
               访问私有直播
             </Button>
@@ -235,10 +260,10 @@ export function GuestHomePage() {
         </div>
       </footer>
 
-      {/* Password Verification Modal */}
+      {/* Share Code Verification Modal */}
       <Modal
-        isOpen={showPasswordModal}
-        onClose={closePasswordModal}
+        isOpen={showShareCodeModal}
+        onClose={closeShareCodeModal}
         title="访问私有直播"
         size="sm"
       >
@@ -271,10 +296,10 @@ export function GuestHomePage() {
             </div>
 
             <div className="flex gap-3 pt-2">
-              <Button variant="outline" onClick={closePasswordModal} className="flex-1">
+              <Button variant="outline" onClick={closeShareCodeModal} className="flex-1">
                 关闭
               </Button>
-              <Link to={`/live/${verifiedStream.stream_key}`} className="flex-1">
+              <Link to={`/live/${verifiedStream.stream_key}?access_token=${verifiedAccessToken}`} className="flex-1">
                 <Button variant="gold" className="w-full">
                   <Play className="w-4 h-4 mr-2" />
                   {verifiedStream.status === 'pushing' ? '观看直播' : '进入直播间'}
@@ -283,37 +308,29 @@ export function GuestHomePage() {
             </div>
           </div>
         ) : (
-          // 输入密钥和密码
+          // 输入分享码
           <div className="space-y-4">
             <p className="text-sm text-dark-400">
-              输入直播密钥和密码以访问私有直播
+              输入 8 位分享码以访问私有直播
             </p>
 
             <Input
-              label="直播密钥"
-              placeholder="请输入直播密钥"
-              value={streamKey}
-              onChange={(e) => setStreamKey(e.target.value)}
-              icon={<Search className="w-4 h-4" />}
-            />
-
-            <Input
-              label="访问密码"
-              type="password"
-              placeholder="请输入访问密码"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              label="分享码"
+              placeholder="请输入 8 位分享码"
+              value={shareCode}
+              onChange={(e) => setShareCode(e.target.value)}
               icon={<Lock className="w-4 h-4" />}
               error={verifyError}
+              maxLength={8}
             />
 
             <div className="flex gap-3 pt-2">
-              <Button variant="outline" onClick={closePasswordModal} className="flex-1">
+              <Button variant="outline" onClick={closeShareCodeModal} className="flex-1">
                 取消
               </Button>
               <Button
                 variant="gold"
-                onClick={handleVerifyPassword}
+                onClick={handleVerifyShareCode}
                 loading={verifying}
                 className="flex-1"
               >

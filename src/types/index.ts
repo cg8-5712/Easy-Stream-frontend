@@ -46,6 +46,9 @@ export interface Stream {
   device_id: string
   status: StreamStatus
   visibility: StreamVisibility
+  share_code?: string
+  share_code_max_uses?: number
+  share_code_used_count?: number
   record_enabled: boolean
   record_files: string[]
   protocol: string
@@ -77,7 +80,6 @@ export interface CreateStreamRequest {
   description?: string
   device_id?: string
   visibility: StreamVisibility
-  password?: string
   record_enabled?: boolean
   streamer_name: string
   streamer_contact?: string
@@ -91,7 +93,7 @@ export interface UpdateStreamRequest {
   description?: string
   device_id?: string
   visibility?: StreamVisibility
-  password?: string
+  share_code_max_uses?: number
   record_enabled?: boolean
   streamer_name?: string
   streamer_contact?: string
@@ -100,14 +102,45 @@ export interface UpdateStreamRequest {
   auto_kick_delay?: number
 }
 
-export interface VerifyPasswordRequest {
-  password: string
+// Share code verification types
+export interface VerifyShareCodeRequest {
+  share_code: string
 }
 
-export interface VerifyPasswordResponse {
+export interface VerifyShareCodeResponse {
   stream_key: string
   token: string
   expires_at: string
+}
+
+// Share link types
+export interface ShareLink {
+  id: number
+  stream_id: number
+  token: string
+  max_uses: number
+  used_count: number
+  created_by: number
+  created_at: string
+  stream?: Stream
+}
+
+export interface ShareLinkListResponse {
+  share_links: ShareLink[]
+}
+
+export interface CreateShareLinkRequest {
+  max_uses?: number
+}
+
+export interface VerifyShareLinkResponse {
+  stream_key: string
+  token: string
+  expires_at: string
+}
+
+export interface ShareCodeRequest {
+  max_uses?: number
 }
 
 // System types
