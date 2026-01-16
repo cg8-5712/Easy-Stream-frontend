@@ -1,0 +1,166 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --gold-primary: #d4af37;
+    --gold-light: #f4e4bc;
+    --gold-dark: #b8960f;
+    --dark-bg: #0f172a;
+    --dark-surface: #1e293b;
+  }
+
+  * {
+    @apply border-dark-700;
+  }
+
+  body {
+    @apply bg-dark-950 text-dark-100 font-sans antialiased;
+    background-image:
+      radial-gradient(ellipse at top, rgba(212, 175, 55, 0.03) 0%, transparent 50%),
+      radial-gradient(ellipse at bottom right, rgba(212, 175, 55, 0.02) 0%, transparent 50%);
+    min-height: 100vh;
+    margin: 0;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-dark-900;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-dark-700 rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-gold-500/50;
+  }
+}
+
+@layer components {
+  /* Gold gradient text */
+  .text-gold-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-gold-400 via-gold-300 to-gold-500;
+  }
+
+  /* Gold border glow */
+  .border-gold-glow {
+    @apply border border-gold-500/30;
+    box-shadow: 0 0 20px rgba(212, 175, 55, 0.1), inset 0 0 20px rgba(212, 175, 55, 0.05);
+  }
+
+  /* Glass card effect */
+  .glass-card {
+    @apply bg-dark-900/80 backdrop-blur-xl border border-dark-700/50 rounded-2xl;
+  }
+
+  /* Premium button */
+  .btn-gold {
+    @apply relative overflow-hidden px-6 py-3 rounded-lg font-medium text-dark-950
+           bg-gradient-to-r from-gold-400 via-gold-500 to-gold-400
+           hover:from-gold-300 hover:via-gold-400 hover:to-gold-300
+           transition-all duration-300 shadow-gold hover:shadow-gold-lg;
+  }
+
+  .btn-gold::before {
+    content: '';
+    @apply absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent;
+    transform: translateX(-100%);
+    transition: transform 0.5s ease;
+  }
+
+  .btn-gold:hover::before {
+    transform: translateX(100%);
+  }
+
+  /* Outline button */
+  .btn-outline {
+    @apply px-6 py-3 rounded-lg font-medium text-gold-400
+           border border-gold-500/30 hover:border-gold-500/60
+           hover:bg-gold-500/10 transition-all duration-300;
+  }
+
+  /* Input field */
+  .input-dark {
+    @apply w-full px-4 py-3 rounded-lg bg-dark-800/50 border border-dark-700
+           text-dark-100 placeholder-dark-500
+           focus:outline-none focus:border-gold-500/50 focus:ring-1 focus:ring-gold-500/30
+           transition-all duration-300;
+  }
+
+  /* Status badges */
+  .badge-live {
+    @apply inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium
+           bg-red-500/20 text-red-400 border border-red-500/30;
+  }
+
+  .badge-idle {
+    @apply inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium
+           bg-dark-700/50 text-dark-400 border border-dark-600;
+  }
+
+  .badge-ended {
+    @apply inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium
+           bg-dark-800 text-dark-500 border border-dark-700;
+  }
+
+  /* Stat card */
+  .stat-card {
+    @apply glass-card p-6 hover:border-gold-500/30 transition-all duration-300;
+  }
+
+  /* Table styles */
+  .table-dark {
+    @apply w-full;
+  }
+
+  .table-dark th {
+    @apply px-4 py-3 text-left text-xs font-medium text-dark-400 uppercase tracking-wider
+           bg-dark-800/50 border-b border-dark-700;
+  }
+
+  .table-dark td {
+    @apply px-4 py-4 text-sm text-dark-200 border-b border-dark-800;
+  }
+
+  .table-dark tr:hover td {
+    @apply bg-dark-800/30;
+  }
+}
+
+@layer utilities {
+  /* Animate on scroll */
+  .animate-on-scroll {
+    @apply opacity-0 translate-y-4 transition-all duration-700;
+  }
+
+  .animate-on-scroll.visible {
+    @apply opacity-100 translate-y-0;
+  }
+
+  /* Gold underline */
+  .gold-underline {
+    @apply relative;
+  }
+
+  .gold-underline::after {
+    content: '';
+    @apply absolute bottom-0 left-0 w-full h-0.5 bg-gradient-to-r from-gold-500 to-gold-400;
+    transform: scaleX(0);
+    transform-origin: right;
+    transition: transform 0.3s ease;
+  }
+
+  .gold-underline:hover::after {
+    transform: scaleX(1);
+    transform-origin: left;
+  }
+}

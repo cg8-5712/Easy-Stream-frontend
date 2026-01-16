@@ -1,0 +1,975 @@
+openapi: 3.0.3
+info:
+  title: Easy-Stream API
+  description: 直播流管理系统 API
+  version: "2.0"
+  contact:
+    name: Easy-Stream
+
+servers:
+  - url: http://localhost:8080/api/v1
+    description: 本地开发服务器
+
+tags:
+  - name: 认证
+    description: 用户认证相关接口
+  - name: 推流管理
+    description: 推流管理相关接口
+  - name: 系统
+    description: 系统相关接口
+  - name: Hook
+    description: ZLMediaKit Hook 回调接口
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT Access Token
+
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: 用户 ID
+        username:
+          type: string
+          description: 用户名
+        email:
+          type: string
+          description: 邮箱
+        phone:
+          type: string
+          description: 电话
+        real_name:
+          type: string
+          description: 真实姓名
+        avatar:
+          type: string
+          description: 头像 URL
+        last_login_at:
+          type: string
+          format: date-time
+          description: 最后登录时间
+        created_at:
+          type: string
+          format: date-time
+          description: 创建时间
+        updated_at:
+          type: string
+          format: date-time
+          description: 更新时间
+
+    Stream:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: 推流 ID
+        stream_key:
+          type: string
+          description: 推流密钥
+        name:
+          type: string
+          description: 直播名称
+        description:
+          type: string
+          description: 直播描述
+        device_id:
+          type: string
+          description: 设备 ID
+        status:
+          type: string
+          enum: [idle, pushing, ended]
+          description: 状态
+        visibility:
+          type: string
+          enum: [public, private]
+          description: 可见性
+        record_enabled:
+          type: boolean
+          description: 是否开启录制
+        record_files:
+          type: array
+          items:
+            type: string
+          description: 录制文件路径列表
+        protocol:
+          type: string
+          description: 推流协议
+        bitrate:
+          type: integer
+          description: 码率 (kbps)
+        fps:
+          type: integer
+          description: 帧率
+        streamer_name:
+          type: string
+          description: 直播人员姓名
+        streamer_contact:
+          type: string
+          description: 直播人员联系方式
+        scheduled_start_time:
+          type: string
+          format: date-time
+          description: 预计开始时间
+        scheduled_end_time:
+          type: string
+          format: date-time
+          description: 预计结束时间
+        auto_kick_delay:
+          type: integer
+          description: 超时断流延迟（分钟）
+        actual_start_time:
+          type: string
+          format: date-time
+          nullable: true
+          description: 实际开始时间
+        actual_end_time:
+          type: string
+          format: date-time
+          nullable: true
+          description: 实际结束时间
+        last_frame_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: 最后一帧时间
+        created_by:
+          type: integer
+          description: 创建者用户 ID
+        created_at:
+          type: string
+          format: date-time
+          description: 创建时间
+        updated_at:
+          type: string
+          format: date-time
+          description: 更新时间
+
+    StreamAccessToken:
+      type: object
+      properties:
+        stream_key:
+          type: string
+          description: 推流密钥
+        token:
+          type: string
+          description: 访问令牌
+        expires_at:
+          type: string
+          format: date-time
+          description: 过期时间
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: 错误信息
+
+    Message:
+      type: object
+      properties:
+        message:
+          type: string
+          description: 消息
+
+    HookResponse:
+      type: object
+      properties:
+        code:
+          type: integer
+          description: 响应码，0 表示成功，-1 表示失败
+        msg:
+          type: string
+          description: 响应消息
+
+paths:
+  # ==================== 认证接口 ====================
+  /auth/login:
+    post:
+      tags:
+        - 认证
+      summary: 用户登录
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - password
+              properties:
+                username:
+                  type: string
+                  description: 用户名
+                  example: admin
+                password:
+                  type: string
+                  description: 密码
+                  example: admin123
+      responses:
+        '200':
+          description: 登录成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token:
+                    type: string
+                    description: 访问令牌
+                  refresh_token:
+                    type: string
+                    description: 刷新令牌
+                  expires_in:
+                    type: integer
+                    description: 过期时间（秒）
+                    example: 7200
+                  user:
+                    $ref: '#/components/schemas/User'
+        '401':
+          description: 认证失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: invalid credentials
+
+  /auth/refresh:
+    post:
+      tags:
+        - 认证
+      summary: 刷新令牌
+      operationId: refreshToken
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - refresh_token
+              properties:
+                refresh_token:
+                  type: string
+                  description: 刷新令牌
+      responses:
+        '200':
+          description: 刷新成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token:
+                    type: string
+                    description: 新的访问令牌
+                  refresh_token:
+                    type: string
+                    description: 新的刷新令牌
+                  expires_in:
+                    type: integer
+                    description: 过期时间（秒）
+                    example: 7200
+        '401':
+          description: 刷新失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: invalid or expired refresh token
+
+  /auth/logout:
+    post:
+      tags:
+        - 认证
+      summary: 用户登出
+      operationId: logout
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                refresh_token:
+                  type: string
+                  description: 刷新令牌（用于撤销）
+      responses:
+        '200':
+          description: 登出成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+              example:
+                message: logged out
+
+  /auth/profile:
+    get:
+      tags:
+        - 认证
+      summary: 获取当前用户信息
+      operationId: getProfile
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          description: 未授权
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # ==================== 推流管理接口 ====================
+  /streams:
+    get:
+      tags:
+        - 推流管理
+      summary: 获取推流列表
+      description: 游客可访问，但只能看到公开且正在直播的内容；管理员可看到所有直播记录
+      operationId: listStreams
+      parameters:
+        - name: status
+          in: query
+          description: 状态过滤（仅管理员有效）
+          schema:
+            type: string
+            enum: [idle, pushing, ended]
+        - name: visibility
+          in: query
+          description: 可见性过滤（仅管理员有效）
+          schema:
+            type: string
+            enum: [public, private]
+        - name: time_range
+          in: query
+          description: 时间范围过滤（仅管理员有效）
+          schema:
+            type: string
+            enum: [past, current, future]
+        - name: page
+          in: query
+          description: 页码
+          schema:
+            type: integer
+            default: 1
+        - name: pageSize
+          in: query
+          description: 每页数量
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total:
+                    type: integer
+                    description: 总数
+                  streams:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Stream'
+
+    post:
+      tags:
+        - 推流管理
+      summary: 创建推流码
+      description: 管理员创建新的推流码
+      operationId: createStream
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - visibility
+                - streamer_name
+                - scheduled_start_time
+                - scheduled_end_time
+              properties:
+                name:
+                  type: string
+                  description: 直播名称
+                  example: 技术分享会
+                description:
+                  type: string
+                  description: 直播描述
+                device_id:
+                  type: string
+                  description: 设备 ID
+                visibility:
+                  type: string
+                  enum: [public, private]
+                  description: 可见性
+                  example: public
+                password:
+                  type: string
+                  description: 私有直播密码（visibility=private 时必填）
+                record_enabled:
+                  type: boolean
+                  description: 是否开启录制
+                  default: false
+                streamer_name:
+                  type: string
+                  description: 直播人员姓名
+                  example: 张三
+                streamer_contact:
+                  type: string
+                  description: 直播人员联系方式
+                scheduled_start_time:
+                  type: string
+                  format: date-time
+                  description: 预计开始时间
+                scheduled_end_time:
+                  type: string
+                  format: date-time
+                  description: 预计结束时间
+                auto_kick_delay:
+                  type: integer
+                  description: 超时断流延迟（分钟）
+                  default: 30
+      responses:
+        '201':
+          description: 创建成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Stream'
+        '400':
+          description: 请求参数错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: 未授权
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /streams/id/{id}:
+    get:
+      tags:
+        - 推流管理
+      summary: 通过 ID 获取推流详情
+      description: 管理员通过 ID 获取推流详情，可查看所有直播记录
+      operationId: getStreamById
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 直播 ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Stream'
+        '401':
+          description: 未授权
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: 不存在
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: stream not found
+
+  /streams/{key}:
+    get:
+      tags:
+        - 推流管理
+      summary: 通过推流码获取推流详情
+      description: 游客可访问公开直播；私有直播需要 access_token 或管理员权限
+      operationId: getStreamByKey
+      parameters:
+        - name: key
+          in: path
+          required: true
+          description: 推流密钥
+          schema:
+            type: string
+        - name: access_token
+          in: query
+          description: 私有直播访问令牌
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Stream'
+        '403':
+          description: 私有直播无权限
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: private stream requires password
+        '404':
+          description: 不存在
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: stream not found
+
+    put:
+      tags:
+        - 推流管理
+      summary: 更新推流信息
+      description: |
+        管理员更新推流信息。
+
+        **动态录制说明：**
+        - 推流中开启录制：从当前时间点开始录制，不包含之前的内容
+        - 推流中关闭录制：立即停止录制，已录制内容保留
+        - 多次开关录制：每次开启会生成新的录制文件
+      operationId: updateStream
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: key
+          in: path
+          required: true
+          description: 推流密钥
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: 直播名称
+                description:
+                  type: string
+                  description: 直播描述
+                device_id:
+                  type: string
+                  description: 设备 ID
+                visibility:
+                  type: string
+                  enum: [public, private]
+                  description: 可见性
+                password:
+                  type: string
+                  description: 私有直播密码
+                record_enabled:
+                  type: boolean
+                  description: 是否开启录制（支持推流中动态修改）
+                streamer_name:
+                  type: string
+                  description: 直播人员姓名
+                streamer_contact:
+                  type: string
+                  description: 直播人员联系方式
+                scheduled_start_time:
+                  type: string
+                  format: date-time
+                  description: 预计开始时间
+                scheduled_end_time:
+                  type: string
+                  format: date-time
+                  description: 预计结束时间
+                auto_kick_delay:
+                  type: integer
+                  description: 超时断流延迟（分钟）
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Stream'
+        '401':
+          description: 未授权
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: 不存在
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      tags:
+        - 推流管理
+      summary: 删除推流码
+      description: 管理员删除推流码
+      operationId: deleteStream
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: key
+          in: path
+          required: true
+          description: 推流密钥
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 删除成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+              example:
+                message: deleted
+        '401':
+          description: 未授权
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: 不存在
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /streams/{key}/verify:
+    post:
+      tags:
+        - 推流管理
+      summary: 验证私有直播密码
+      description: 游客通过此接口验证私有直播密码，获取访问令牌
+      operationId: verifyStreamPassword
+      parameters:
+        - name: key
+          in: path
+          required: true
+          description: 推流密钥
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - password
+              properties:
+                password:
+                  type: string
+                  description: 私有直播密码
+      responses:
+        '200':
+          description: 验证成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StreamAccessToken'
+        '401':
+          description: 密码错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: invalid password
+        '404':
+          description: 不存在
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /streams/{key}/kick:
+    post:
+      tags:
+        - 推流管理
+      summary: 强制断流
+      description: 管理员强制断开正在进行的推流
+      operationId: kickStream
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: key
+          in: path
+          required: true
+          description: 推流密钥
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 断流成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+              example:
+                message: kicked
+        '401':
+          description: 未授权
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: 不存在
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # ==================== 系统接口 ====================
+  /system/health:
+    get:
+      tags:
+        - 系统
+      summary: 健康检查
+      operationId: healthCheck
+      responses:
+        '200':
+          description: 服务正常
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+
+  /system/stats:
+    get:
+      tags:
+        - 系统
+      summary: 系统统计
+      description: 管理员获取系统统计信息
+      operationId: getStats
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  online_streams:
+                    type: integer
+                    description: 在线推流数
+                  total_streams:
+                    type: integer
+                    description: 总推流数
+        '401':
+          description: 未授权
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # ==================== Hook 接口 ====================
+  /hooks/on_publish:
+    post:
+      tags:
+        - Hook
+      summary: 推流开始回调
+      description: |
+        ZLMediaKit 推流开始时调用此接口进行验证。
+
+        **验证逻辑：**
+        - stream_key 必须存在
+        - stream 状态不能为 ended
+
+        验证失败返回 code=-1，ZLMediaKit 会自动断开推流连接。
+      operationId: onPublish
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                app:
+                  type: string
+                  description: 应用名
+                  example: live
+                stream:
+                  type: string
+                  description: 流名称（stream_key）
+                schema:
+                  type: string
+                  description: 协议
+                  example: rtmp
+                mediaServerId:
+                  type: string
+                  description: 媒体服务器 ID
+                ip:
+                  type: string
+                  description: 推流端 IP
+                port:
+                  type: integer
+                  description: 推流端端口
+      responses:
+        '200':
+          description: 响应
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HookResponse'
+              examples:
+                success:
+                  summary: 验证通过
+                  value:
+                    code: 0
+                    msg: success
+                failed:
+                  summary: 验证失败
+                  value:
+                    code: -1
+                    msg: stream not found
+
+  /hooks/on_unpublish:
+    post:
+      tags:
+        - Hook
+      summary: 推流结束回调
+      description: ZLMediaKit 推流结束时调用此接口
+      operationId: onUnpublish
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                app:
+                  type: string
+                  description: 应用名
+                stream:
+                  type: string
+                  description: 流名称
+                schema:
+                  type: string
+                  description: 协议
+                mediaServerId:
+                  type: string
+                  description: 媒体服务器 ID
+      responses:
+        '200':
+          description: 响应
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HookResponse'
+
+  /hooks/on_flow_report:
+    post:
+      tags:
+        - Hook
+      summary: 流量统计回调
+      description: ZLMediaKit 流量统计回调
+      operationId: onFlowReport
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                app:
+                  type: string
+                stream:
+                  type: string
+                totalBytes:
+                  type: integer
+                  description: 总字节数
+                duration:
+                  type: integer
+                  description: 持续时间（秒）
+                player:
+                  type: boolean
+                  description: 是否为播放器
+      responses:
+        '200':
+          description: 响应
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HookResponse'
+
+  /hooks/on_stream_none_reader:
+    post:
+      tags:
+        - Hook
+      summary: 无人观看回调
+      description: ZLMediaKit 无人观看时调用此接口
+      operationId: onStreamNoneReader
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                app:
+                  type: string
+                stream:
+                  type: string
+                schema:
+                  type: string
+                mediaServerId:
+                  type: string
+      responses:
+        '200':
+          description: 响应
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                  close:
+                    type: boolean
+                    description: 是否关闭流
