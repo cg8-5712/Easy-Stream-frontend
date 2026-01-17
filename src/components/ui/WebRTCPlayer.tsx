@@ -64,9 +64,22 @@ export function WebRTCPlayer({
 
       // 连接状态变化
       pc.onconnectionstatechange = () => {
+        console.log('WebRTC 连接状态:', pc.connectionState)
         if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
           setStatus('error')
           setError('连接断开')
+        }
+      }
+
+      // ICE 连接状态
+      pc.oniceconnectionstatechange = () => {
+        console.log('ICE 连接状态:', pc.iceConnectionState)
+      }
+
+      // ICE 候选
+      pc.onicecandidate = (event) => {
+        if (event.candidate) {
+          console.log('ICE 候选:', event.candidate)
         }
       }
 
