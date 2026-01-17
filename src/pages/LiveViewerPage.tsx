@@ -15,8 +15,9 @@ import {
   ExternalLink,
   Zap,
   Shield,
+  StopCircle,
 } from 'lucide-react'
-import { Button, Card, Input, StatusBadge, Badge, Modal } from '@/components/ui'
+import { Button, Card, Input, StatusBadge, Badge, Modal, WebRTCPlayer } from '@/components/ui'
 import { streamService, shareLinkService } from '@/services'
 import { useAuthStore } from '@/stores'
 import { formatDate, formatNumber } from '@/lib/utils'
@@ -33,6 +34,7 @@ export function LiveViewerPage() {
   const [error, setError] = useState<string | null>(null)
   const [showShareCodeModal, setShowShareCodeModal] = useState(false)
   const [showKickModal, setShowKickModal] = useState(false)
+  const [showEndModal, setShowEndModal] = useState(false)
   const [shareCode, setShareCode] = useState('')
   const [accessToken, setAccessToken] = useState<string | null>(null)
   const [actionLoading, setActionLoading] = useState(false)
@@ -115,7 +117,7 @@ export function LiveViewerPage() {
     }
   }
 
-  // 强制断流（管理员功能）
+  // 强制断流（管理员功能）- 状态变为 idle，可以重新推流
   const handleKickStream = async () => {
     if (!streamKey) return
     setActionLoading(true)
@@ -125,6 +127,21 @@ export function LiveViewerPage() {
       setShowKickModal(false)
     } catch (error) {
       console.error('Failed to kick stream:', error)
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  // 结束直播（管理员功能）- 状态变为 ended，不能再推流
+  const handleEndStream = async () => {
+    if (!streamKey) return
+    setActionLoading(true)
+    try {
+      await streamService.endStream(streamKey)
+      await fetchStream()
+      setShowEndModal(false)
+    } catch (error) {
+      console.error('Failed to end stream:', error)
     } finally {
       setActionLoading(false)
     }
@@ -172,7 +189,7 @@ export function LiveViewerPage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2">
           {/* 管理员标识 */}
           {isAuthenticated && (
             <Badge variant="success" className="text-xs">
@@ -187,15 +204,39 @@ export function LiveViewerPage() {
               私有
             </Badge>
           )}
-          {/* 管理员断流按钮 */}
+          {/* 管理员操作按钮 */}
           {isAuthenticated && stream?.status === 'pushing' && (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowKickModal(true)}
+                title="断流后状态变为等待中，可以重新推流"
+              >
+                <Zap className="w-4 h-4 mr-1" />
+                断流
+              </Button>
+              <Button
+                variant="danger"
+                size="sm"
+                onClick={() => setShowEndModal(true)}
+                title="结束后直播不能再推流"
+              >
+                <StopCircle className="w-4 h-4 mr-1" />
+                结束
+              </Button>
+            </>
+          )}
+          {/* idle 状态下也可以结束直播 */}
+          {isAuthenticated && stream?.status === 'idle' && (
             <Button
               variant="danger"
               size="sm"
-              onClick={() => setShowKickModal(true)}
+              onClick={() => setShowEndModal(true)}
+              title="结束后直播不能再推流"
             >
-              <Zap className="w-4 h-4 mr-1" />
-              断流
+              <StopCircle className="w-4 h-4 mr-1" />
+              结束直播
             </Button>
           )}
         </div>
@@ -209,19 +250,17 @@ export function LiveViewerPage() {
               <div className="aspect-video bg-dark-900 relative">
                 {stream?.status === 'pushing' ? (
                   <>
-                    {/* WebRTC Player placeholder - integrate with actual player */}
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="text-center">
-                        <Radio className="w-16 h-16 text-gold-500 mx-auto mb-4 animate-pulse" />
-                        <p className="text-dark-300 mb-2">直播进行中</p>
-                        <p className="text-sm text-dark-500">
-                          请使用播放器观看直播
-                        </p>
-                      </div>
-                    </div>
+                    {/* WebRTC Player */}
+                    <WebRTCPlayer
+                      streamId={stream.id}
+                      streamKey={streamKey || undefined}
+                      className="absolute inset-0"
+                      autoPlay={true}
+                      muted={true}
+                    />
 
                     {/* Live indicator */}
-                    <div className="absolute top-4 left-4 flex items-center gap-2">
+                    <div className="absolute top-4 left-4 flex items-center gap-2 z-10 pointer-events-none">
                       <span className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-red-500 text-white">
                         <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
                         LIVE
@@ -229,7 +268,7 @@ export function LiveViewerPage() {
                     </div>
 
                     {/* Viewer count */}
-                    <div className="absolute top-4 right-4">
+                    <div className="absolute top-4 right-4 z-10 pointer-events-none">
                       <span className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-dark-900/80 text-dark-200 backdrop-blur-sm">
                         <Eye className="w-3.5 h-3.5" />
                         {formatNumber(stream?.current_viewers || 0)}
@@ -240,7 +279,7 @@ export function LiveViewerPage() {
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="text-center">
                       <Clock className="w-16 h-16 text-gold-500 mx-auto mb-4" />
-                      <p className="text-xl text-dark-200 mb-2">直播即将开始</p>
+                      <p className="text-xl text-dark-200 mb-2">等待推流</p>
                       <p className="text-dark-500">
                         预计开始时间: {formatDate(stream.scheduled_start_time)}
                       </p>
@@ -441,21 +480,49 @@ export function LiveViewerPage() {
         size="sm"
       >
         <div className="space-y-4">
-          <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20">
-            <p className="text-sm text-red-400">
-              此操作将立即断开当前推流连接，正在观看的用户将无法继续观看。
+          <div className="p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+            <p className="text-sm text-yellow-400">
+              断流后直播状态将变为"等待中"，主播可以重新推流继续直播。
             </p>
           </div>
           <p className="text-dark-300">
-            确定要强制断开直播 <span className="text-dark-100 font-medium">{stream?.name}</span> 的推流吗？
+            确定要断开直播 <span className="text-dark-100 font-medium">{stream?.name}</span> 的推流吗？
           </p>
           <div className="flex gap-3 justify-end">
             <Button variant="ghost" onClick={() => setShowKickModal(false)}>
               取消
             </Button>
-            <Button variant="danger" onClick={handleKickStream} loading={actionLoading}>
+            <Button variant="outline" onClick={handleKickStream} loading={actionLoading}>
               <Zap className="w-4 h-4 mr-2" />
               确认断流
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* End Stream Modal (管理员) */}
+      <Modal
+        isOpen={showEndModal}
+        onClose={() => setShowEndModal(false)}
+        title="结束直播"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20">
+            <p className="text-sm text-red-400">
+              结束直播后状态将变为"已结束"，主播将无法再推流。此操作不可撤销。
+            </p>
+          </div>
+          <p className="text-dark-300">
+            确定要结束直播 <span className="text-dark-100 font-medium">{stream?.name}</span> 吗？
+          </p>
+          <div className="flex gap-3 justify-end">
+            <Button variant="ghost" onClick={() => setShowEndModal(false)}>
+              取消
+            </Button>
+            <Button variant="danger" onClick={handleEndStream} loading={actionLoading}>
+              <StopCircle className="w-4 h-4 mr-2" />
+              确认结束
             </Button>
           </div>
         </div>

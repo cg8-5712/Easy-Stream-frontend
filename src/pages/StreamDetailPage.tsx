@@ -17,6 +17,7 @@ import {
   Check,
   ExternalLink,
   Zap,
+  StopCircle,
 } from 'lucide-react'
 import { Header } from '@/components/layout'
 import { Card, Button, Input, StatusBadge, Badge, Modal } from '@/components/ui'
@@ -38,6 +39,7 @@ export function StreamDetailPage() {
   const [showDeleteLinkModal, setShowDeleteLinkModal] = useState(false)
   const [showMaxUsesModal, setShowMaxUsesModal] = useState(false)
   const [showKickModal, setShowKickModal] = useState(false)
+  const [showEndModal, setShowEndModal] = useState(false)
   const [selectedLink, setSelectedLink] = useState<ShareLink | null>(null)
 
   // Form states
@@ -151,7 +153,7 @@ export function StreamDetailPage() {
     }
   }
 
-  // 强制断流
+  // 强制断流 - 状态变为 idle，可以重新推流
   const handleKickStream = async () => {
     if (!stream) return
     setActionLoading(true)
@@ -161,6 +163,21 @@ export function StreamDetailPage() {
       setShowKickModal(false)
     } catch (error) {
       console.error('Failed to kick stream:', error)
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  // 结束直播 - 状态变为 ended，不能再推流
+  const handleEndStream = async () => {
+    if (!stream) return
+    setActionLoading(true)
+    try {
+      await streamService.endStream(stream.stream_key)
+      await fetchStream()
+      setShowEndModal(false)
+    } catch (error) {
+      console.error('Failed to end stream:', error)
     } finally {
       setActionLoading(false)
     }
@@ -483,14 +500,35 @@ export function StreamDetailPage() {
                       观看直播
                     </Button>
                     <Button
-                      variant="danger"
+                      variant="outline"
                       className="w-full"
                       onClick={() => setShowKickModal(true)}
+                      title="断流后状态变为等待中，可以重新推流"
                     >
                       <Zap className="w-4 h-4 mr-2" />
                       强制断流
                     </Button>
+                    <Button
+                      variant="danger"
+                      className="w-full"
+                      onClick={() => setShowEndModal(true)}
+                      title="结束后直播不能再推流"
+                    >
+                      <StopCircle className="w-4 h-4 mr-2" />
+                      结束直播
+                    </Button>
                   </>
+                )}
+                {stream.status === 'idle' && (
+                  <Button
+                    variant="danger"
+                    className="w-full"
+                    onClick={() => setShowEndModal(true)}
+                    title="结束后直播不能再推流"
+                  >
+                    <StopCircle className="w-4 h-4 mr-2" />
+                    结束直播
+                  </Button>
                 )}
                 <Button
                   variant="ghost"
@@ -635,21 +673,49 @@ export function StreamDetailPage() {
         size="sm"
       >
         <div className="space-y-4">
-          <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20">
-            <p className="text-sm text-red-400">
-              此操作将立即断开当前推流连接，正在观看的用户将无法继续观看。
+          <div className="p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+            <p className="text-sm text-yellow-400">
+              断流后直播状态将变为"等待中"，主播可以重新推流继续直播。
             </p>
           </div>
           <p className="text-dark-300">
-            确定要强制断开直播 <span className="text-dark-100 font-medium">{stream?.name}</span> 的推流吗？
+            确定要断开直播 <span className="text-dark-100 font-medium">{stream?.name}</span> 的推流吗？
           </p>
           <div className="flex gap-3 justify-end">
             <Button variant="ghost" onClick={() => setShowKickModal(false)}>
               取消
             </Button>
-            <Button variant="danger" onClick={handleKickStream} loading={actionLoading}>
+            <Button variant="outline" onClick={handleKickStream} loading={actionLoading}>
               <Zap className="w-4 h-4 mr-2" />
               确认断流
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* End Stream Modal */}
+      <Modal
+        isOpen={showEndModal}
+        onClose={() => setShowEndModal(false)}
+        title="结束直播"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20">
+            <p className="text-sm text-red-400">
+              结束直播后状态将变为"已结束"，主播将无法再推流。此操作不可撤销。
+            </p>
+          </div>
+          <p className="text-dark-300">
+            确定要结束直播 <span className="text-dark-100 font-medium">{stream?.name}</span> 吗？
+          </p>
+          <div className="flex gap-3 justify-end">
+            <Button variant="ghost" onClick={() => setShowEndModal(false)}>
+              取消
+            </Button>
+            <Button variant="danger" onClick={handleEndStream} loading={actionLoading}>
+              <StopCircle className="w-4 h-4 mr-2" />
+              确认结束
             </Button>
           </div>
         </div>

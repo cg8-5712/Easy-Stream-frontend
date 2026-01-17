@@ -71,6 +71,11 @@ export const streamService = {
     await api.post(`/streams/${key}/kick`)
   },
 
+  // 手动结束直播 (管理员) - 状态变为 ended
+  async endStream(key: string): Promise<void> {
+    await api.post(`/admin/streams/${key}/end`)
+  },
+
   // 验证分享码 (游客)
   async verifyShareCode(data: VerifyShareCodeRequest): Promise<VerifyShareCodeResponse> {
     const response = await api.post<VerifyShareCodeResponse>('/shares/verify-code', data)
