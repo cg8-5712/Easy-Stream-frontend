@@ -184,8 +184,22 @@ export interface SystemStats {
   total_streams: number
 }
 
+export interface ServiceHealth {
+  status: 'up' | 'down'
+  latency: string
+  message?: string
+}
+
 export interface HealthResponse {
-  status: string
+  status: 'healthy' | 'degraded' | 'unhealthy'
+  timestamp: string
+  uptime: string
+  version: string
+  services: {
+    postgresql: ServiceHealth
+    redis: ServiceHealth
+    zlmediakit: ServiceHealth
+  }
 }
 
 // API Error

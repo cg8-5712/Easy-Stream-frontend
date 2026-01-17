@@ -14,21 +14,24 @@ import { Header } from '@/components/layout'
 import { Card, Button, StatusBadge } from '@/components/ui'
 import { streamService, systemService } from '@/services'
 import { formatDate, formatNumber } from '@/lib/utils'
-import type { Stream, SystemStats } from '@/types'
+import type { Stream, SystemStats, HealthResponse } from '@/types'
 
 export function DashboardPage() {
   const [stats, setStats] = useState<SystemStats | null>(null)
+  const [health, setHealth] = useState<HealthResponse | null>(null)
   const [liveStreams, setLiveStreams] = useState<Stream[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [statsData, streamsData] = await Promise.all([
+        const [statsData, healthData, streamsData] = await Promise.all([
           systemService.getStats(),
+          systemService.getHealth(),
           streamService.getStreams({ status: 'pushing', pageSize: 5 }),
         ])
         setStats(statsData)
+        setHealth(healthData)
         setLiveStreams(streamsData.streams)
       } catch (error) {
         console.error('Failed to fetch dashboard data:', error)
@@ -147,7 +150,7 @@ export function DashboardPage() {
                   {liveStreams.map((stream) => (
                     <Link
                       key={stream.id}
-                      to={`/live/${stream.stream_key}`}
+                      to={`/admin/streams/${stream.id}`}
                       className="block p-4 rounded-xl bg-dark-800/30 border border-dark-700/50 hover:border-gold-500/30 transition-all duration-300"
                     >
                       <div className="flex items-start justify-between mb-3">
@@ -206,29 +209,96 @@ export function DashboardPage() {
             {/* System Status */}
             <Card>
               <h2 className="text-lg font-semibold text-dark-100 mb-4">系统状态</h2>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-dark-400">API 服务</span>
-                  <span className="flex items-center gap-2 text-green-400">
-                    <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-                    正常
-                  </span>
+              {health ? (
+                <>
+                  <div className="mb-4 pb-4 border-b border-dark-700">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm text-dark-400">系统状态</span>
+                      <span className={`text-sm font-medium ${
+                        health.status === 'healthy' ? 'text-green-400' :
+                        health.status === 'degraded' ? 'text-yellow-400' :
+                        'text-red-400'
+                      }`}>
+                        {health.status === 'healthy' ? '健康' :
+                         health.status === 'degraded' ? '降级' :
+                         '异常'}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs text-dark-500">
+                      <span>运行时间: {health.uptime}</span>
+                      <span>版本: {health.version}</span>
+                    </div>
+                  </div>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-dark-400">PostgreSQL</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-dark-500">{health.services.postgresql.latency}</span>
+                        <span className={`flex items-center gap-2 ${
+                          health.services.postgresql.status === 'up' ? 'text-green-400' : 'text-red-400'
+                        }`}>
+                          <span className={`w-2 h-2 rounded-full ${
+                            health.services.postgresql.status === 'up' ? 'bg-green-400 animate-pulse' : 'bg-red-400'
+                          }`} />
+                          {health.services.postgresql.status === 'up' ? '正常' : '异常'}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-dark-400">Redis</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-dark-500">{health.services.redis.latency}</span>
+                        <span className={`flex items-center gap-2 ${
+                          health.services.redis.status === 'up' ? 'text-green-400' : 'text-red-400'
+                        }`}>
+                          <span className={`w-2 h-2 rounded-full ${
+                            health.services.redis.status === 'up' ? 'bg-green-400 animate-pulse' : 'bg-red-400'
+                          }`} />
+                          {health.services.redis.status === 'up' ? '正常' : '异常'}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-dark-400">ZLMediaKit</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-dark-500">{health.services.zlmediakit.latency}</span>
+                        <span className={`flex items-center gap-2 ${
+                          health.services.zlmediakit.status === 'up' ? 'text-green-400' : 'text-red-400'
+                        }`}>
+                          <span className={`w-2 h-2 rounded-full ${
+                            health.services.zlmediakit.status === 'up' ? 'bg-green-400 animate-pulse' : 'bg-red-400'
+                          }`} />
+                          {health.services.zlmediakit.status === 'up' ? '正常' : '异常'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-dark-400">API 服务</span>
+                    <span className="flex items-center gap-2 text-dark-500">
+                      <span className="w-2 h-2 rounded-full bg-dark-600" />
+                      加载中...
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-dark-400">流媒体服务</span>
+                    <span className="flex items-center gap-2 text-dark-500">
+                      <span className="w-2 h-2 rounded-full bg-dark-600" />
+                      加载中...
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-dark-400">数据库</span>
+                    <span className="flex items-center gap-2 text-dark-500">
+                      <span className="w-2 h-2 rounded-full bg-dark-600" />
+                      加载中...
+                    </span>
+                  </div>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-dark-400">流媒体服务</span>
-                  <span className="flex items-center gap-2 text-green-400">
-                    <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-                    正常
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-dark-400">数据库</span>
-                  <span className="flex items-center gap-2 text-green-400">
-                    <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-                    正常
-                  </span>
-                </div>
-              </div>
+              )}
             </Card>
           </div>
         </div>

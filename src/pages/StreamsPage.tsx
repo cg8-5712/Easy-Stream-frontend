@@ -16,7 +16,8 @@ import {
   Lock,
 } from 'lucide-react'
 import { Header } from '@/components/layout'
-import { Card, Button, Input, StatusBadge, Badge, Modal } from '@/components/ui'
+import { Card, Button, Input, StatusBadge, Badge, Modal, Select } from '@/components/ui'
+import type { SelectOption } from '@/components/ui'
 import { streamService } from '@/services'
 import { formatDate } from '@/lib/utils'
 import type { Stream, CreateStreamRequest, StreamStatus } from '@/types'
@@ -84,14 +85,14 @@ export function StreamsPage() {
     navigator.clipboard.writeText(key)
   }
 
-  const statusOptions = [
+  const statusOptions: SelectOption[] = [
     { value: 'all', label: '全部状态' },
     { value: 'pushing', label: '直播中' },
     { value: 'idle', label: '待开始' },
     { value: 'ended', label: '已结束' },
   ]
 
-  const timeOptions = [
+  const timeOptions: SelectOption[] = [
     { value: 'all', label: '全部时间' },
     { value: 'current', label: '正在进行' },
     { value: 'future', label: '即将开始' },
@@ -115,25 +116,17 @@ export function StreamsPage() {
           </div>
 
           <div className="flex gap-3">
-            <select
+            <Select
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as StreamStatus | 'all')}
-              className="input-dark py-2.5 pr-8 appearance-none cursor-pointer"
-            >
-              {statusOptions.map((opt) => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
-              ))}
-            </select>
+              onChange={(value) => setStatusFilter(value as StreamStatus | 'all')}
+              options={statusOptions}
+            />
 
-            <select
+            <Select
               value={timeRange}
-              onChange={(e) => setTimeRange(e.target.value as TimeRange)}
-              className="input-dark py-2.5 pr-8 appearance-none cursor-pointer"
-            >
-              {timeOptions.map((opt) => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
-              ))}
-            </select>
+              onChange={(value) => setTimeRange(value as TimeRange)}
+              options={timeOptions}
+            />
 
             <Button onClick={() => setShowCreateModal(true)}>
               <Plus className="w-4 h-4 mr-2" />

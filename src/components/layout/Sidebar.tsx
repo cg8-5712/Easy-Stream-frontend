@@ -2,7 +2,7 @@ import { Link, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard,
   Radio,
-  Settings,
+  Home,
   LogOut,
   Tv,
 } from 'lucide-react'
@@ -12,7 +12,7 @@ import { useAuthStore } from '@/stores'
 const navigation = [
   { name: '仪表盘', href: '/admin/dashboard', icon: LayoutDashboard },
   { name: '直播管理', href: '/admin/streams', icon: Radio },
-  { name: '系统设置', href: '/admin/settings', icon: Settings },
+  { name: '返回首页', href: '/', icon: Home },
 ]
 
 export function Sidebar() {

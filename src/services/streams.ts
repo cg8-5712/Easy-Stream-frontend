@@ -73,7 +73,7 @@ export const streamService = {
 
   // 手动结束直播 (管理员) - 状态变为 ended
   async endStream(key: string): Promise<void> {
-    await api.post(`/admin/streams/${key}/end`)
+    await api.post(`/streams/${key}/end`)
   },
 
   // 验证分享码 (游客)
