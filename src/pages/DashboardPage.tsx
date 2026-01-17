@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import { Header } from '@/components/layout'
 import { Card, Button, StatusBadge } from '@/components/ui'
+import { CreateStreamModal } from '@/components/CreateStreamModal'
 import { streamService, systemService } from '@/services'
 import { formatDate, formatNumber } from '@/lib/utils'
 import type { Stream, SystemStats, HealthResponse } from '@/types'
@@ -21,25 +22,26 @@ export function DashboardPage() {
   const [health, setHealth] = useState<HealthResponse | null>(null)
   const [liveStreams, setLiveStreams] = useState<Stream[]>([])
   const [loading, setLoading] = useState(true)
+  const [showCreateModal, setShowCreateModal] = useState(false)
+
+  const fetchData = async () => {
+    try {
+      const [statsData, healthData, streamsData] = await Promise.all([
+        systemService.getStats(),
+        systemService.getHealth(),
+        streamService.getStreams({ status: 'pushing', pageSize: 5 }),
+      ])
+      setStats(statsData)
+      setHealth(healthData)
+      setLiveStreams(streamsData.streams)
+    } catch (error) {
+      console.error('Failed to fetch dashboard data:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [statsData, healthData, streamsData] = await Promise.all([
-          systemService.getStats(),
-          systemService.getHealth(),
-          streamService.getStreams({ status: 'pushing', pageSize: 5 }),
-        ])
-        setStats(statsData)
-        setHealth(healthData)
-        setLiveStreams(streamsData.streams)
-      } catch (error) {
-        console.error('Failed to fetch dashboard data:', error)
-      } finally {
-        setLoading(false)
-      }
-    }
-
     fetchData()
     const interval = setInterval(fetchData, 30000) // Refresh every 30s
     return () => clearInterval(interval)
@@ -138,12 +140,15 @@ export function DashboardPage() {
                 <div className="text-center py-12">
                   <Radio className="w-12 h-12 text-dark-600 mx-auto mb-4" />
                   <p className="text-dark-500">暂无正在进行的直播</p>
-                  <Link to="/admin/streams">
-                    <Button variant="outline" size="sm" className="mt-4">
-                      <Plus className="w-4 h-4 mr-2" />
-                      创建直播
-                    </Button>
-                  </Link>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-4"
+                    onClick={() => setShowCreateModal(true)}
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    创建直播
+                  </Button>
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -191,12 +196,14 @@ export function DashboardPage() {
             <Card>
               <h2 className="text-lg font-semibold text-dark-100 mb-4">快捷操作</h2>
               <div className="space-y-3">
-                <Link to="/admin/streams" className="block">
-                  <Button variant="gold" className="w-full justify-start">
-                    <Plus className="w-4 h-4 mr-2" />
-                    创建新直播
-                  </Button>
-                </Link>
+                <Button
+                  variant="gold"
+                  className="w-full justify-start"
+                  onClick={() => setShowCreateModal(true)}
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  创建新直播
+                </Button>
                 <Link to="/admin/streams" className="block">
                   <Button variant="outline" className="w-full justify-start">
                     <Radio className="w-4 h-4 mr-2" />
@@ -303,6 +310,16 @@ export function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* Create Stream Modal */}
+      <CreateStreamModal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onSuccess={() => {
+          setShowCreateModal(false)
+          fetchData()
+        }}
+      />
     </div>
   )
 }
