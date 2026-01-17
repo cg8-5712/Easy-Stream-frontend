@@ -206,7 +206,7 @@ Authorization: Bearer {access_token}
 
 ### 2.1 获取推流列表
 
-> 游客可访问，但只能看到公开且正在直播的内容；管理员可看到所有直播记录（包括过去、正在进行和将来的）
+> 游客可访问，但只能看到公开且正在直播的内容（不含 stream_key）；管理员可看到所有直播记录（包括过去、正在进行和将来的）
 
 **接口地址**
 ```
@@ -220,6 +220,7 @@ GET /api/v1/streams
 | status | string | 否 | - | 状态过滤：`idle`/`pushing`/`ended`（仅管理员有效） |
 | visibility | string | 否 | - | 可见性过滤：`public`/`private`（仅管理员有效） |
 | time_range | string | 否 | - | 时间范围：`past`/`current`/`future`（仅管理员有效） |
+| access_token | string | 否 | - | 私有直播访问令牌（游客可通过此参数获取已授权的私有直播） |
 | page | int | 否 | 1 | 页码 |
 | pageSize | int | 否 | 20 | 每页数量 |
 
@@ -235,16 +236,16 @@ GET /api/v1/streams
 ```
 GET /api/v1/streams?status=pushing&page=1&pageSize=20
 GET /api/v1/streams?time_range=past&page=1&pageSize=20
+GET /api/v1/streams?access_token=xyz789abc123...  (游客携带访问令牌)
 ```
 
-**响应示例** (200 OK)
+**游客响应示例** (200 OK) - 不含 stream_key
 ```json
 {
   "total": 100,
   "streams": [
     {
       "id": 1,
-      "stream_key": "abc123def456",
       "name": "技术分享会",
       "description": "每周技术分享直播",
       "device_id": "camera-001",
@@ -274,9 +275,66 @@ GET /api/v1/streams?time_range=past&page=1&pageSize=20
 }
 ```
 
+**管理员响应示例** (200 OK) - 含 stream_key
+```json
+{
+  "total": 100,
+  "streams": [
+    {
+      "id": 1,
+      "stream_key": "abc123def456",
+      "name": "技术分享会",
+      ...
+    }
+  ]
+}
+```
+
 ---
 
-### 2.2 创建推流码（管理员）
+### 2.2 通过 ID 获取推流详情（游客/管理员）
+
+> 游客可访问公开直播（不含 stream_key），私有直播需要 access_token；管理员返回完整信息
+
+**接口地址**
+```
+GET /api/v1/streams/view/:id
+```
+
+**路径参数**
+
+| 参数名 | 类型 | 必填 | 说明 |
+|--------|------|------|------|
+| id | int | 是 | 直播 ID |
+
+**查询参数**
+
+| 参数名 | 类型 | 必填 | 说明 |
+|--------|------|------|------|
+| access_token | string | 否 | 私有直播访问令牌（游客访问私有直播时必填） |
+
+**游客响应示例** (200 OK) - 不含 stream_key
+```json
+{
+  "id": 1,
+  "name": "技术分享会",
+  "description": "每周技术分享直播",
+  "status": "pushing",
+  "visibility": "public",
+  ...
+}
+```
+
+**错误响应** (403 Forbidden) - 私有直播无权限
+```json
+{
+  "error": "private stream requires access token"
+}
+```
+
+---
+
+### 2.3 创建推流码（管理员）
 
 **接口地址**
 ```
@@ -541,8 +599,8 @@ POST /api/v1/shares/verify-code
 **响应示例** (200 OK)
 ```json
 {
-  "stream_key": "abc123def456",
-  "token": "xyz789abc123...",
+  "stream_id": 1,
+  "access_token": "xyz789abc123...",
   "expires_at": "2024-01-01T16:00:00Z"
 }
 ```
@@ -550,8 +608,8 @@ POST /api/v1/shares/verify-code
 **使用方式**
 
 获取 token 后，可通过以下方式访问私有直播：
-1. 查询参数：`GET /api/v1/streams/:key?access_token={token}`
-2. 分享链接：`https://example.com/live/{stream_key}?access_token={token}`
+1. 查询参数：`GET /api/v1/streams/view/:id?access_token={token}`
+2. 获取列表时携带：`GET /api/v1/streams?access_token={token}`
 
 **错误响应**
 
@@ -869,7 +927,7 @@ Authorization: Bearer {access_token}
   "share_links": [
     {
       "id": 1,
-      "stream_id": 5,
+      "stream_key": "test-stream-004",
       "token": "abc123xyz789...",
       "max_uses": 100,
       "used_count": 25,
@@ -917,7 +975,7 @@ Authorization: Bearer {access_token}
 ```json
 {
   "id": 1,
-  "stream_id": 5,
+  "stream_key": "test-stream-004",
   "token": "abc123xyz789...",
   "max_uses": 100,
   "used_count": 0,
@@ -963,7 +1021,7 @@ Authorization: Bearer {access_token}
 ```json
 {
   "id": 1,
-  "stream_id": 5,
+  "stream_key": "test-stream-004",
   "token": "abc123xyz789...",
   "max_uses": 200,
   "used_count": 25,
@@ -1019,8 +1077,8 @@ GET /api/v1/shares/link/:token
 **响应示例** (200 OK)
 ```json
 {
-  "stream_key": "test-stream-004",
-  "token": "xyz789abc123...",
+  "stream_id": 5,
+  "access_token": "xyz789abc123...",
   "expires_at": "2024-01-01T18:00:00Z"
 }
 ```
@@ -1275,7 +1333,7 @@ POST /api/v1/hooks/on_player_disconnect
 ```typescript
 {
   id: number              // 分享链接 ID
-  stream_id: number       // 关联的直播 ID
+  stream_key: string      // 关联的直播 stream_key
   token: string           // 分享链接 token（64位）
   max_uses: number        // 最大使用次数（0表示不限制）
   used_count: number      // 已使用次数
@@ -1289,8 +1347,8 @@ POST /api/v1/hooks/on_player_disconnect
 
 ```typescript
 {
-  stream_key: string      // 推流密钥
-  token: string           // 访问令牌
+  stream_id: number       // 直播 ID
+  access_token: string    // 访问令牌
   expires_at: string      // 过期时间
 }
 ```

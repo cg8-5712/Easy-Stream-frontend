@@ -12,19 +12,18 @@ import {
   Calendar,
   User,
   Phone,
-  Copy,
   ExternalLink,
 } from 'lucide-react'
 import { Button, Card, Input, StatusBadge, Badge, Modal } from '@/components/ui'
 import { streamService, shareLinkService } from '@/services'
 import { formatDate, formatNumber } from '@/lib/utils'
-import type { Stream } from '@/types'
+import type { StreamView } from '@/types'
 
 export function LiveViewerPage() {
-  const { streamKey } = useParams<{ streamKey: string }>()
+  const { id } = useParams<{ id: string }>()
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
-  const [stream, setStream] = useState<Stream | null>(null)
+  const [stream, setStream] = useState<StreamView | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showShareCodeModal, setShowShareCodeModal] = useState(false)
@@ -32,10 +31,10 @@ export function LiveViewerPage() {
   const [accessToken, setAccessToken] = useState<string | null>(null)
 
   const fetchStream = async (token?: string) => {
-    if (!streamKey) return
+    if (!id) return
 
     try {
-      const data = await streamService.getStreamByKey(streamKey, token || accessToken || undefined)
+      const data = await streamService.getStreamViewById(parseInt(id), token || accessToken || undefined)
       setStream(data)
       setError(null)
     } catch (err: unknown) {
@@ -66,8 +65,8 @@ export function LiveViewerPage() {
       // Verify share link and get access token
       shareLinkService.verifyShareLink(shareToken)
         .then((result) => {
-          setAccessToken(result.token)
-          fetchStream(result.token)
+          setAccessToken(result.access_token)
+          fetchStream(result.access_token)
         })
         .catch(() => {
           setError('分享链接无效或已过期')
@@ -76,14 +75,14 @@ export function LiveViewerPage() {
     } else {
       fetchStream()
     }
-  }, [streamKey, searchParams])
+  }, [id, searchParams])
 
   // Refresh stream data periodically
   useEffect(() => {
     if (!accessToken && !searchParams.get('share_token')) return
     const interval = setInterval(() => fetchStream(), 10000)
     return () => clearInterval(interval)
-  }, [streamKey, accessToken])
+  }, [id, accessToken])
 
   const handleShareCodeSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -91,25 +90,15 @@ export function LiveViewerPage() {
 
     try {
       const result = await streamService.verifyShareCode({ share_code: shareCode.trim() })
-      setAccessToken(result.token)
+      setAccessToken(result.access_token)
       setShowShareCodeModal(false)
       setShareCode('')
       setError(null)
       // Navigate to the stream with access token
-      navigate(`/live/${result.stream_key}?access_token=${result.token}`)
+      navigate(`/live/view/${result.stream_id}?access_token=${result.access_token}`)
     } catch {
       setError('分享码无效')
     }
-  }
-
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text)
-  }
-
-  const getWebRTCUrl = () => {
-    if (!stream) return ''
-    // Replace with actual server address
-    return `webrtc://localhost:8000/live/${stream.stream_key}`
   }
 
   if (loading) {
@@ -177,19 +166,10 @@ export function LiveViewerPage() {
                     <div className="absolute inset-0 flex items-center justify-center">
                       <div className="text-center">
                         <Radio className="w-16 h-16 text-gold-500 mx-auto mb-4 animate-pulse" />
-                        <p className="text-dark-300 mb-2">WebRTC 播放器</p>
+                        <p className="text-dark-300 mb-2">直播进行中</p>
                         <p className="text-sm text-dark-500">
-                          播放地址: {getWebRTCUrl()}
+                          请使用播放器观看直播
                         </p>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="mt-4"
-                          onClick={() => copyToClipboard(getWebRTCUrl())}
-                        >
-                          <Copy className="w-4 h-4 mr-2" />
-                          复制播放地址
-                        </Button>
                       </div>
                     </div>
 

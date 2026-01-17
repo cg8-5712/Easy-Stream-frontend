@@ -32,7 +32,7 @@ function App() {
           {/* Public routes */}
           <Route path="/" element={<GuestHomePage />} />
           <Route path="/login" element={<LoginPage />} />
-          <Route path="/live/:streamKey" element={<LiveViewerPage />} />
+          <Route path="/live/view/:id" element={<LiveViewerPage />} />
 
           {/* Protected routes (Admin) */}
           <Route

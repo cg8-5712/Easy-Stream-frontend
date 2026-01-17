@@ -12,19 +12,20 @@ import {
 import { Card, Button, Input, Modal } from '@/components/ui'
 import { streamService, shareLinkService } from '@/services'
 import { formatDate, formatNumber } from '@/lib/utils'
-import type { Stream } from '@/types'
+import type { StreamView } from '@/types'
 
 export function GuestHomePage() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
-  const [liveStreams, setLiveStreams] = useState<Stream[]>([])
+  const [liveStreams, setLiveStreams] = useState<StreamView[]>([])
   const [loading, setLoading] = useState(true)
   const [showShareCodeModal, setShowShareCodeModal] = useState(false)
   const [shareCode, setShareCode] = useState('')
   const [verifying, setVerifying] = useState(false)
   const [verifyError, setVerifyError] = useState('')
-  const [verifiedStream, setVerifiedStream] = useState<Stream | null>(null)
+  const [verifiedStream, setVerifiedStream] = useState<StreamView | null>(null)
   const [verifiedAccessToken, setVerifiedAccessToken] = useState<string | null>(null)
+  const [verifiedStreamId, setVerifiedStreamId] = useState<number | null>(null)
 
   useEffect(() => {
     const fetchLiveStreams = async () => {
@@ -54,9 +55,9 @@ export function GuestHomePage() {
       setVerifying(true)
       shareLinkService.verifyShareLink(shareToken)
         .then((result) => {
-          // Store access token and redirect to live page
-          sessionStorage.setItem(`stream_token_${result.stream_key}`, result.token)
-          navigate(`/live/${result.stream_key}?access_token=${result.token}`)
+          // Store access token and redirect to live view page
+          sessionStorage.setItem(`stream_token_${result.stream_id}`, result.access_token)
+          navigate(`/live/view/${result.stream_id}?access_token=${result.access_token}`)
         })
         .catch(() => {
           setVerifyError('分享链接无效或已过期')
@@ -79,11 +80,12 @@ export function GuestHomePage() {
 
     try {
       const result = await streamService.verifyShareCode({ share_code: shareCode.trim() })
-      setVerifiedAccessToken(result.token)
+      setVerifiedAccessToken(result.access_token)
+      setVerifiedStreamId(result.stream_id)
       // 保存 token 到 sessionStorage
-      sessionStorage.setItem(`stream_token_${result.stream_key}`, result.token)
+      sessionStorage.setItem(`stream_token_${result.stream_id}`, result.access_token)
       // 获取直播信息
-      const stream = await streamService.getStreamByKey(result.stream_key, result.token)
+      const stream = await streamService.getStreamViewById(result.stream_id, result.access_token)
       setVerifiedStream(stream)
     } catch (error: unknown) {
       const err = error as { response?: { status?: number } }
@@ -107,6 +109,7 @@ export function GuestHomePage() {
     setVerifyError('')
     setVerifiedStream(null)
     setVerifiedAccessToken(null)
+    setVerifiedStreamId(null)
   }
 
   if (loading) {
@@ -198,7 +201,7 @@ export function GuestHomePage() {
             {liveStreams.map((stream) => (
               <Link
                 key={stream.id}
-                to={`/live/${stream.stream_key}`}
+                to={`/live/view/${stream.id}`}
                 className="group"
               >
                 <Card hover className="h-full transition-all duration-300 group-hover:border-gold-500/50">
@@ -299,7 +302,7 @@ export function GuestHomePage() {
               <Button variant="outline" onClick={closeShareCodeModal} className="flex-1">
                 关闭
               </Button>
-              <Link to={`/live/${verifiedStream.stream_key}?access_token=${verifiedAccessToken}`} className="flex-1">
+              <Link to={`/live/view/${verifiedStreamId}?access_token=${verifiedAccessToken}`} className="flex-1">
                 <Button variant="gold" className="w-full">
                   <Play className="w-4 h-4 mr-2" />
                   {verifiedStream.status === 'pushing' ? '观看直播' : '进入直播间'}

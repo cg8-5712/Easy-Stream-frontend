@@ -1,7 +1,9 @@
 import api from './api'
 import type {
   Stream,
+  StreamView,
   StreamListResponse,
+  StreamViewListResponse,
   CreateStreamRequest,
   UpdateStreamRequest,
   VerifyShareCodeRequest,
@@ -15,22 +17,39 @@ export interface StreamListParams {
   time_range?: string
   page?: number
   pageSize?: number
+  access_token?: string
 }
 
 export const streamService = {
+  // 管理员获取直播列表
   async getStreams(params?: StreamListParams): Promise<StreamListResponse> {
     const response = await api.get<StreamListResponse>('/streams', { params })
     return response.data
   },
 
+  // 游客获取直播列表（带 access_token）
+  async getStreamsForGuest(accessToken?: string, params?: Omit<StreamListParams, 'access_token'>): Promise<StreamViewListResponse> {
+    const queryParams = { ...params, access_token: accessToken }
+    const response = await api.get<StreamViewListResponse>('/streams', { params: queryParams })
+    return response.data
+  },
+
+  // 管理员通过 ID 获取直播
   async getStreamById(id: number): Promise<Stream> {
     const response = await api.get<Stream>(`/streams/id/${id}`)
     return response.data
   },
 
-  async getStreamByKey(key: string, accessToken?: string): Promise<Stream> {
+  // 游客通过 ID 获取直播详情（不含 stream_key）
+  async getStreamViewById(id: number, accessToken?: string): Promise<StreamView> {
     const params = accessToken ? { access_token: accessToken } : undefined
-    const response = await api.get<Stream>(`/streams/${key}`, { params })
+    const response = await api.get<StreamView>(`/streams/view/${id}`, { params })
+    return response.data
+  },
+
+  // 管理员通过 key 获取直播
+  async getStreamByKey(key: string): Promise<Stream> {
+    const response = await api.get<Stream>(`/streams/${key}`)
     return response.data
   },
 

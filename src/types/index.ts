@@ -75,6 +75,40 @@ export interface StreamListResponse {
   streams: Stream[]
 }
 
+// StreamView - 游客看到的直播信息（不含 stream_key）
+export interface StreamView {
+  id: number
+  name: string
+  description: string
+  device_id: string
+  status: StreamStatus
+  visibility: StreamVisibility
+  record_enabled: boolean
+  record_files: string[]
+  protocol: string
+  bitrate: number
+  fps: number
+  streamer_name: string
+  streamer_contact: string
+  scheduled_start_time: string
+  scheduled_end_time: string
+  auto_kick_delay: number
+  actual_start_time: string | null
+  actual_end_time: string | null
+  last_frame_at: string | null
+  current_viewers: number
+  total_viewers: number
+  peak_viewers: number
+  created_by: number
+  created_at: string
+  updated_at: string
+}
+
+export interface StreamViewListResponse {
+  total: number
+  streams: StreamView[]
+}
+
 export interface CreateStreamRequest {
   name: string
   description?: string
@@ -108,15 +142,15 @@ export interface VerifyShareCodeRequest {
 }
 
 export interface VerifyShareCodeResponse {
-  stream_key: string
-  token: string
+  stream_id: number
+  access_token: string
   expires_at: string
 }
 
 // Share link types
 export interface ShareLink {
   id: number
-  stream_id: number
+  stream_key: string
   token: string
   max_uses: number
   used_count: number
@@ -126,7 +160,8 @@ export interface ShareLink {
 }
 
 export interface ShareLinkListResponse {
-  share_links: ShareLink[]
+  total: number
+  links: ShareLink[]
 }
 
 export interface CreateShareLinkRequest {
@@ -134,8 +169,8 @@ export interface CreateShareLinkRequest {
 }
 
 export interface VerifyShareLinkResponse {
-  stream_key: string
-  token: string
+  stream_id: number
+  access_token: string
   expires_at: string
 }
 

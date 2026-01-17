@@ -57,7 +57,7 @@ export function StreamDetailPage() {
   const fetchShareLinks = async (streamKey: string) => {
     try {
       const data = await shareLinkService.getShareLinks(streamKey)
-      setShareLinks(data.share_links || [])
+      setShareLinks(data.links || [])
     } catch (error) {
       console.error('Failed to fetch share links:', error)
     }

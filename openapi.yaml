@@ -164,10 +164,10 @@ components:
     StreamAccessToken:
       type: object
       properties:
-        stream_key:
-          type: string
-          description: 推流密钥
-        token:
+        stream_id:
+          type: integer
+          description: 直播 ID
+        access_token:
           type: string
           description: 访问令牌
         expires_at:
@@ -181,9 +181,9 @@ components:
         id:
           type: integer
           description: 分享链接 ID
-        stream_id:
-          type: integer
-          description: 关联的直播 ID
+        stream_key:
+          type: string
+          description: 关联的直播 stream_key
         token:
           type: string
           description: 分享链接 token（64位）
@@ -380,7 +380,7 @@ paths:
       tags:
         - 推流管理
       summary: 获取推流列表
-      description: 游客可访问，但只能看到公开且正在直播的内容；管理员可看到所有直播记录
+      description: 游客可访问，但只能看到公开且正在直播的内容（不含 stream_key）；管理员可看到所有直播记录
       operationId: listStreams
       parameters:
         - name: status
@@ -401,6 +401,11 @@ paths:
           schema:
             type: string
             enum: [past, current, future]
+        - name: access_token
+          in: query
+          description: 私有直播访问令牌（游客可通过此参数获取已授权的私有直播）
+          schema:
+            type: string
         - name: page
           in: query
           description: 页码
@@ -508,12 +513,55 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
+  /streams/view/{id}:
+    get:
+      tags:
+        - 推流管理
+      summary: 通过 ID 获取推流详情（游客/管理员）
+      description: 游客可访问公开直播（不含 stream_key），私有直播需要 access_token；管理员返回完整信息
+      operationId: getStreamByIdPublic
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 直播 ID
+          schema:
+            type: integer
+        - name: access_token
+          in: query
+          description: 私有直播访问令牌
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Stream'
+        '403':
+          description: 私有直播无权限
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: private stream requires access token
+        '404':
+          description: 不存在
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: stream not found
+
   /streams/id/{id}:
     get:
       tags:
         - 推流管理
-      summary: 通过 ID 获取推流详情
-      description: 管理员通过 ID 获取推流详情，可查看所有直播记录
+      summary: 通过 ID 获取推流详情（管理员）
+      description: 管理员通过 ID 获取推流详情，返回完整信息（含 stream_key）
       operationId: getStreamById
       security:
         - BearerAuth: []
@@ -550,19 +598,16 @@ paths:
     get:
       tags:
         - 推流管理
-      summary: 通过推流码获取推流详情
-      description: 游客可访问公开直播；私有直播需要 access_token 或管理员权限
+      summary: 通过推流码获取推流详情（管理员）
+      description: 管理员通过推流码获取推流详情
       operationId: getStreamByKey
+      security:
+        - BearerAuth: []
       parameters:
         - name: key
           in: path
           required: true
           description: 推流密钥
-          schema:
-            type: string
-        - name: access_token
-          in: query
-          description: 私有直播访问令牌
           schema:
             type: string
       responses:
@@ -572,14 +617,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Stream'
-        '403':
-          description: 私有直播无权限
+        '401':
+          description: 未授权
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-              example:
-                error: private stream requires access token
         '404':
           description: 不存在
           content:
@@ -736,10 +779,10 @@ paths:
               schema:
                 type: object
                 properties:
-                  stream_key:
-                    type: string
-                    description: 推流密钥
-                  token:
+                  stream_id:
+                    type: integer
+                    description: 直播 ID
+                  access_token:
                     type: string
                     description: 访问令牌
                   expires_at:
@@ -793,10 +836,10 @@ paths:
               schema:
                 type: object
                 properties:
-                  stream_key:
-                    type: string
-                    description: 推流密钥
-                  token:
+                  stream_id:
+                    type: integer
+                    description: 直播 ID
+                  access_token:
                     type: string
                     description: 访问令牌
                   expires_at:
