@@ -191,13 +191,13 @@ export function DashboardPage() {
             <Card>
               <h2 className="text-lg font-semibold text-dark-100 mb-4">快捷操作</h2>
               <div className="space-y-3">
-                <Link to="/streams" className="block">
+                <Link to="/admin/streams" className="block">
                   <Button variant="gold" className="w-full justify-start">
                     <Plus className="w-4 h-4 mr-2" />
                     创建新直播
                   </Button>
                 </Link>
-                <Link to="/streams" className="block">
+                <Link to="/admin/streams" className="block">
                   <Button variant="outline" className="w-full justify-start">
                     <Radio className="w-4 h-4 mr-2" />
                     管理直播

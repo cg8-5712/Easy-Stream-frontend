@@ -9,10 +9,12 @@ import {
   Users,
   ArrowRight,
   LogOut,
+  Shield,
 } from 'lucide-react'
 import { Card, Button, Input, Modal, Badge } from '@/components/ui'
 import { streamService, shareLinkService } from '@/services'
 import { formatDate, formatNumber } from '@/lib/utils'
+import { useAuthStore } from '@/stores'
 import type { StreamView } from '@/types'
 
 // sessionStorage key for guest access token
@@ -21,6 +23,7 @@ const GUEST_ACCESS_TOKEN_KEY = 'guest_access_token'
 export function GuestHomePage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
+  const { isAuthenticated } = useAuthStore()
   const [liveStreams, setLiveStreams] = useState<StreamView[]>([])
   const [loading, setLoading] = useState(true)
   const [showShareCodeModal, setShowShareCodeModal] = useState(false)
@@ -202,11 +205,27 @@ export function GuestHomePage() {
                   私有直播
                 </Button>
               )}
-              <Link to="/login">
-                <Button variant="ghost" size="sm">
-                  管理员登录
-                </Button>
-              </Link>
+              {isAuthenticated ? (
+                // 管理员已登录
+                <div className="flex items-center gap-2">
+                  <Badge variant="success" className="text-xs">
+                    <Shield className="w-3 h-3 mr-1" />
+                    管理员
+                  </Badge>
+                  <Link to="/admin/dashboard">
+                    <Button variant="gold" size="sm">
+                      管理页面
+                    </Button>
+                  </Link>
+                </div>
+              ) : (
+                // 未登录
+                <Link to="/login">
+                  <Button variant="ghost" size="sm">
+                    管理员登录
+                  </Button>
+                </Link>
+              )}
             </div>
           </div>
         </div>
