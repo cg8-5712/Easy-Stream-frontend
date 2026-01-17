@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { Link, useSearchParams, useNavigate } from 'react-router-dom'
 import {
   Radio,
@@ -8,14 +8,18 @@ import {
   Play,
   Users,
   ArrowRight,
+  LogOut,
 } from 'lucide-react'
-import { Card, Button, Input, Modal } from '@/components/ui'
+import { Card, Button, Input, Modal, Badge } from '@/components/ui'
 import { streamService, shareLinkService } from '@/services'
 import { formatDate, formatNumber } from '@/lib/utils'
 import type { StreamView } from '@/types'
 
+// sessionStorage key for guest access token
+const GUEST_ACCESS_TOKEN_KEY = 'guest_access_token'
+
 export function GuestHomePage() {
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
   const [liveStreams, setLiveStreams] = useState<StreamView[]>([])
   const [loading, setLoading] = useState(true)
@@ -27,26 +31,42 @@ export function GuestHomePage() {
   const [verifiedAccessToken, setVerifiedAccessToken] = useState<string | null>(null)
   const [verifiedStreamId, setVerifiedStreamId] = useState<number | null>(null)
 
-  useEffect(() => {
-    const fetchLiveStreams = async () => {
-      try {
-        // 获取正在直播的公开直播
-        const data = await streamService.getStreams({
+  // Guest access token - 用于获取已授权的私有直播
+  const [guestAccessToken, setGuestAccessToken] = useState<string | null>(() => {
+    return sessionStorage.getItem(GUEST_ACCESS_TOKEN_KEY)
+  })
+
+  // 获取直播列表（带 access_token 可以看到已授权的私有直播）
+  const fetchLiveStreams = useCallback(async (accessToken?: string | null) => {
+    try {
+      const token = accessToken || guestAccessToken
+      if (token) {
+        // 有 access_token，获取公开直播 + 已授权的私有直播
+        const data = await streamService.getStreamsForGuest(token, {
+          status: 'pushing',
+        })
+        setLiveStreams(data.streams)
+      } else {
+        // 无 access_token，只获取公开直播
+        const data = await streamService.getStreamsForGuest(undefined, {
           status: 'pushing',
           visibility: 'public',
         })
         setLiveStreams(data.streams)
-      } catch (error) {
-        console.error('Failed to fetch live streams:', error)
-      } finally {
-        setLoading(false)
       }
+    } catch (error) {
+      console.error('Failed to fetch live streams:', error)
+    } finally {
+      setLoading(false)
     }
+  }, [guestAccessToken])
 
+  // 初始加载和定时刷新
+  useEffect(() => {
     fetchLiveStreams()
-    const interval = setInterval(fetchLiveStreams, 30000)
+    const interval = setInterval(() => fetchLiveStreams(), 30000)
     return () => clearInterval(interval)
-  }, [])
+  }, [fetchLiveStreams])
 
   // Handle share link token from URL
   useEffect(() => {
@@ -55,19 +75,24 @@ export function GuestHomePage() {
       setVerifying(true)
       shareLinkService.verifyShareLink(shareToken)
         .then((result) => {
-          // Store access token and redirect to live view page
+          // 保存 access_token
+          sessionStorage.setItem(GUEST_ACCESS_TOKEN_KEY, result.access_token)
           sessionStorage.setItem(`stream_token_${result.stream_id}`, result.access_token)
+          setGuestAccessToken(result.access_token)
+          // 清除 URL 参数并跳转到直播页
+          setSearchParams({})
           navigate(`/live/view/${result.stream_id}?access_token=${result.access_token}`)
         })
         .catch(() => {
           setVerifyError('分享链接无效或已过期')
           setShowShareCodeModal(true)
+          setSearchParams({})
         })
         .finally(() => {
           setVerifying(false)
         })
     }
-  }, [searchParams, navigate])
+  }, [searchParams, navigate, setSearchParams])
 
   const handleVerifyShareCode = async () => {
     if (!shareCode.trim()) {
@@ -83,10 +108,14 @@ export function GuestHomePage() {
       setVerifiedAccessToken(result.access_token)
       setVerifiedStreamId(result.stream_id)
       // 保存 token 到 sessionStorage
+      sessionStorage.setItem(GUEST_ACCESS_TOKEN_KEY, result.access_token)
       sessionStorage.setItem(`stream_token_${result.stream_id}`, result.access_token)
+      setGuestAccessToken(result.access_token)
       // 获取直播信息
       const stream = await streamService.getStreamViewById(result.stream_id, result.access_token)
       setVerifiedStream(stream)
+      // 刷新直播列表（现在可以看到已授权的私有直播了）
+      fetchLiveStreams(result.access_token)
     } catch (error: unknown) {
       const err = error as { response?: { status?: number } }
       if (err.response?.status === 404) {
@@ -110,6 +139,14 @@ export function GuestHomePage() {
     setVerifiedStream(null)
     setVerifiedAccessToken(null)
     setVerifiedStreamId(null)
+  }
+
+  // 退出游客授权
+  const handleLogoutGuest = () => {
+    sessionStorage.removeItem(GUEST_ACCESS_TOKEN_KEY)
+    setGuestAccessToken(null)
+    setLoading(true)
+    fetchLiveStreams(null)
   }
 
   if (loading) {
@@ -139,14 +176,32 @@ export function GuestHomePage() {
 
             {/* Actions */}
             <div className="flex items-center gap-3">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowShareCodeModal(true)}
-              >
-                <Lock className="w-4 h-4 mr-2" />
-                私有直播
-              </Button>
+              {guestAccessToken ? (
+                // 已授权状态
+                <div className="flex items-center gap-2">
+                  <Badge variant="success" className="text-xs">
+                    <Lock className="w-3 h-3 mr-1" />
+                    已授权访问
+                  </Badge>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleLogoutGuest}
+                    title="退出授权"
+                  >
+                    <LogOut className="w-4 h-4" />
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowShareCodeModal(true)}
+                >
+                  <Lock className="w-4 h-4 mr-2" />
+                  私有直播
+                </Button>
+              )}
               <Link to="/login">
                 <Button variant="ghost" size="sm">
                   管理员登录
@@ -190,18 +245,22 @@ export function GuestHomePage() {
           <Card className="text-center py-16">
             <Radio className="w-16 h-16 text-dark-600 mx-auto mb-4" />
             <h3 className="text-xl font-medium text-dark-300 mb-2">暂无直播</h3>
-            <p className="text-dark-500 mb-6">当前没有正在进行的公开直播</p>
-            <Button variant="outline" onClick={() => setShowShareCodeModal(true)}>
-              <Lock className="w-4 h-4 mr-2" />
-              访问私有直播
-            </Button>
+            <p className="text-dark-500 mb-6">
+              {guestAccessToken ? '当前没有正在进行的直播' : '当前没有正在进行的公开直播'}
+            </p>
+            {!guestAccessToken && (
+              <Button variant="outline" onClick={() => setShowShareCodeModal(true)}>
+                <Lock className="w-4 h-4 mr-2" />
+                访问私有直播
+              </Button>
+            )}
           </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {liveStreams.map((stream) => (
               <Link
                 key={stream.id}
-                to={`/live/view/${stream.id}`}
+                to={`/live/view/${stream.id}${guestAccessToken ? `?access_token=${guestAccessToken}` : ''}`}
                 className="group"
               >
                 <Card hover className="h-full transition-all duration-300 group-hover:border-gold-500/50">
@@ -217,6 +276,13 @@ export function GuestHomePage() {
                       <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
                       直播中
                     </div>
+                    {/* Private badge */}
+                    {stream.visibility === 'private' && (
+                      <div className="absolute top-3 right-3 flex items-center gap-1 px-2 py-1 rounded-md bg-yellow-500/90 text-dark-900 text-xs font-medium">
+                        <Lock className="w-3 h-3" />
+                        私有
+                      </div>
+                    )}
                     {/* Viewers */}
                     <div className="absolute bottom-3 right-3 flex items-center gap-1 px-2 py-1 rounded-md bg-dark-900/80 text-dark-200 text-xs">
                       <Eye className="w-3 h-3" />

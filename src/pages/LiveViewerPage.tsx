@@ -118,7 +118,7 @@ export function LiveViewerPage() {
         <div className="text-center">
           <Radio className="w-16 h-16 text-dark-600 mx-auto mb-4" />
           <h2 className="text-xl font-semibold text-dark-200 mb-2">{error}</h2>
-          <Button variant="outline" onClick={() => navigate(-1)}>
+          <Button variant="outline" onClick={() => navigate('/')}>
             <ArrowLeft className="w-4 h-4 mr-2" />
             返回
           </Button>
@@ -132,7 +132,7 @@ export function LiveViewerPage() {
       {/* Header */}
       <header className="h-16 flex items-center justify-between px-6 border-b border-dark-800 bg-dark-900/50 backdrop-blur-sm">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
+          <Button variant="ghost" size="sm" onClick={() => navigate('/')}>
             <ArrowLeft className="w-4 h-4" />
           </Button>
           <div>
@@ -358,7 +358,7 @@ export function LiveViewerPage() {
       {/* Share Code Modal */}
       <Modal
         isOpen={showShareCodeModal}
-        onClose={() => navigate(-1)}
+        onClose={() => navigate('/')}
         title="私有直播"
         size="sm"
       >
@@ -376,7 +376,7 @@ export function LiveViewerPage() {
             maxLength={8}
           />
           <div className="flex gap-3 justify-end mt-6">
-            <Button type="button" variant="ghost" onClick={() => navigate(-1)}>
+            <Button type="button" variant="ghost" onClick={() => navigate('/')}>
               取消
             </Button>
             <Button type="submit">
