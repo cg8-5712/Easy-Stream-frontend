@@ -16,6 +16,7 @@ import {
   Share2,
   Check,
   ExternalLink,
+  Zap,
 } from 'lucide-react'
 import { Header } from '@/components/layout'
 import { Card, Button, Input, StatusBadge, Badge, Modal } from '@/components/ui'
@@ -36,6 +37,7 @@ export function StreamDetailPage() {
   const [showCreateLinkModal, setShowCreateLinkModal] = useState(false)
   const [showDeleteLinkModal, setShowDeleteLinkModal] = useState(false)
   const [showMaxUsesModal, setShowMaxUsesModal] = useState(false)
+  const [showKickModal, setShowKickModal] = useState(false)
   const [selectedLink, setSelectedLink] = useState<ShareLink | null>(null)
 
   // Form states
@@ -144,6 +146,21 @@ export function StreamDetailPage() {
       setSelectedLink(null)
     } catch (error) {
       console.error('Failed to delete share link:', error)
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  // 强制断流
+  const handleKickStream = async () => {
+    if (!stream) return
+    setActionLoading(true)
+    try {
+      await streamService.kickStream(stream.stream_key)
+      await fetchStream()
+      setShowKickModal(false)
+    } catch (error) {
+      console.error('Failed to kick stream:', error)
     } finally {
       setActionLoading(false)
     }
@@ -456,14 +473,24 @@ export function StreamDetailPage() {
               <h3 className="text-lg font-semibold text-dark-100 mb-4">快捷操作</h3>
               <div className="space-y-2">
                 {stream.status === 'pushing' && (
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => window.open(`/live/${stream.stream_key}`, '_blank')}
-                  >
-                    <Eye className="w-4 h-4 mr-2" />
-                    观看直播
-                  </Button>
+                  <>
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => window.open(`/live/view/${stream.id}`, '_blank')}
+                    >
+                      <Eye className="w-4 h-4 mr-2" />
+                      观看直播
+                    </Button>
+                    <Button
+                      variant="danger"
+                      className="w-full"
+                      onClick={() => setShowKickModal(true)}
+                    >
+                      <Zap className="w-4 h-4 mr-2" />
+                      强制断流
+                    </Button>
+                  </>
                 )}
                 <Button
                   variant="ghost"
@@ -595,6 +622,34 @@ export function StreamDetailPage() {
             </Button>
             <Button variant="danger" onClick={handleDeleteShareLink} loading={actionLoading}>
               删除
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Kick Stream Modal */}
+      <Modal
+        isOpen={showKickModal}
+        onClose={() => setShowKickModal(false)}
+        title="强制断流"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20">
+            <p className="text-sm text-red-400">
+              此操作将立即断开当前推流连接，正在观看的用户将无法继续观看。
+            </p>
+          </div>
+          <p className="text-dark-300">
+            确定要强制断开直播 <span className="text-dark-100 font-medium">{stream?.name}</span> 的推流吗？
+          </p>
+          <div className="flex gap-3 justify-end">
+            <Button variant="ghost" onClick={() => setShowKickModal(false)}>
+              取消
+            </Button>
+            <Button variant="danger" onClick={handleKickStream} loading={actionLoading}>
+              <Zap className="w-4 h-4 mr-2" />
+              确认断流
             </Button>
           </div>
         </div>

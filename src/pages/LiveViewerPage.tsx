@@ -13,29 +13,43 @@ import {
   User,
   Phone,
   ExternalLink,
+  Zap,
+  Shield,
 } from 'lucide-react'
 import { Button, Card, Input, StatusBadge, Badge, Modal } from '@/components/ui'
 import { streamService, shareLinkService } from '@/services'
+import { useAuthStore } from '@/stores'
 import { formatDate, formatNumber } from '@/lib/utils'
-import type { StreamView } from '@/types'
+import type { StreamView, Stream } from '@/types'
 
 export function LiveViewerPage() {
   const { id } = useParams<{ id: string }>()
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
+  const { isAuthenticated } = useAuthStore()
   const [stream, setStream] = useState<StreamView | null>(null)
+  const [streamKey, setStreamKey] = useState<string | null>(null) // 管理员用于断流
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showShareCodeModal, setShowShareCodeModal] = useState(false)
+  const [showKickModal, setShowKickModal] = useState(false)
   const [shareCode, setShareCode] = useState('')
   const [accessToken, setAccessToken] = useState<string | null>(null)
+  const [actionLoading, setActionLoading] = useState(false)
 
   const fetchStream = async (token?: string) => {
     if (!id) return
 
     try {
-      const data = await streamService.getStreamViewById(parseInt(id), token || accessToken || undefined)
-      setStream(data)
+      // 如果是管理员，使用管理员 API 获取完整数据（包含 stream_key）
+      if (isAuthenticated) {
+        const data = await streamService.getStreamById(parseInt(id))
+        setStream(data)
+        setStreamKey(data.stream_key)
+      } else {
+        const data = await streamService.getStreamViewById(parseInt(id), token || accessToken || undefined)
+        setStream(data)
+      }
       setError(null)
     } catch (err: unknown) {
       const error = err as { response?: { status?: number; data?: { error?: string } } }
@@ -75,14 +89,14 @@ export function LiveViewerPage() {
     } else {
       fetchStream()
     }
-  }, [id, searchParams])
+  }, [id, searchParams, isAuthenticated])
 
   // Refresh stream data periodically
   useEffect(() => {
-    if (!accessToken && !searchParams.get('share_token')) return
+    if (!isAuthenticated && !accessToken && !searchParams.get('share_token')) return
     const interval = setInterval(() => fetchStream(), 10000)
     return () => clearInterval(interval)
-  }, [id, accessToken])
+  }, [id, accessToken, isAuthenticated])
 
   const handleShareCodeSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -98,6 +112,21 @@ export function LiveViewerPage() {
       navigate(`/live/view/${result.stream_id}?access_token=${result.access_token}`)
     } catch {
       setError('分享码无效')
+    }
+  }
+
+  // 强制断流（管理员功能）
+  const handleKickStream = async () => {
+    if (!streamKey) return
+    setActionLoading(true)
+    try {
+      await streamService.kickStream(streamKey)
+      await fetchStream()
+      setShowKickModal(false)
+    } catch (error) {
+      console.error('Failed to kick stream:', error)
+    } finally {
+      setActionLoading(false)
     }
   }
 
@@ -144,12 +173,30 @@ export function LiveViewerPage() {
         </div>
 
         <div className="flex items-center gap-4">
+          {/* 管理员标识 */}
+          {isAuthenticated && (
+            <Badge variant="success" className="text-xs">
+              <Shield className="w-3 h-3 mr-1" />
+              管理员
+            </Badge>
+          )}
           {stream && <StatusBadge status={stream.status} />}
           {stream?.visibility === 'private' && (
             <Badge variant="warning">
               <Lock className="w-3 h-3 mr-1" />
               私有
             </Badge>
+          )}
+          {/* 管理员断流按钮 */}
+          {isAuthenticated && stream?.status === 'pushing' && (
+            <Button
+              variant="danger"
+              size="sm"
+              onClick={() => setShowKickModal(true)}
+            >
+              <Zap className="w-4 h-4 mr-1" />
+              断流
+            </Button>
           )}
         </div>
       </header>
@@ -384,6 +431,34 @@ export function LiveViewerPage() {
             </Button>
           </div>
         </form>
+      </Modal>
+
+      {/* Kick Stream Modal (管理员) */}
+      <Modal
+        isOpen={showKickModal}
+        onClose={() => setShowKickModal(false)}
+        title="强制断流"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20">
+            <p className="text-sm text-red-400">
+              此操作将立即断开当前推流连接，正在观看的用户将无法继续观看。
+            </p>
+          </div>
+          <p className="text-dark-300">
+            确定要强制断开直播 <span className="text-dark-100 font-medium">{stream?.name}</span> 的推流吗？
+          </p>
+          <div className="flex gap-3 justify-end">
+            <Button variant="ghost" onClick={() => setShowKickModal(false)}>
+              取消
+            </Button>
+            <Button variant="danger" onClick={handleKickStream} loading={actionLoading}>
+              <Zap className="w-4 h-4 mr-2" />
+              确认断流
+            </Button>
+          </div>
+        </div>
       </Modal>
     </div>
   )
