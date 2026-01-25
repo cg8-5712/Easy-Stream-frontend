@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { Play, Pause, Volume2, VolumeX, Maximize, RefreshCw, AlertCircle } from 'lucide-react'
 import { Button } from './Button'
-import { zlmConfig, getZLMWebRTCUrl } from '@/config'
+import api from '@/services/api'
 
 interface WebRTCPlayerProps {
   streamId: number
-  streamKey?: string // 管理员有 streamKey
+  accessToken?: string // 用于私有直播的访问令牌
   className?: string
   autoPlay?: boolean
   muted?: boolean
@@ -15,7 +15,7 @@ type PlayerStatus = 'idle' | 'connecting' | 'playing' | 'paused' | 'error'
 
 export function WebRTCPlayer({
   streamId,
-  streamKey,
+  accessToken,
   className = '',
   autoPlay = true,
   muted = true,
@@ -27,11 +27,6 @@ export function WebRTCPlayer({
   const [isMuted, setIsMuted] = useState(muted)
   const [isPlaying, setIsPlaying] = useState(false)
   const [showControls, setShowControls] = useState(false)
-
-  // 获取播放的 stream 标识（优先使用 streamKey，否则用 streamId）
-  const getStreamName = useCallback(() => {
-    return streamKey || `stream_${streamId}`
-  }, [streamKey, streamId])
 
   // 创建 WebRTC 连接
   const startPlay = useCallback(async () => {
@@ -104,55 +99,41 @@ export function WebRTCPlayer({
         }
       })
 
-      // 发送到 ZLMediaKit
-      const streamName = getStreamName()
-      const apiUrl = getZLMWebRTCUrl(streamName)
+      // 调用后端代理 API（不暴露 stream_key）
+      const params = accessToken ? { access_token: accessToken } : {}
+      const apiUrl = `/streams/webrtc/${streamId}`
 
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/sdp',
-        },
-        body: pc.localDescription?.sdp,
+      console.log('发送 WebRTC 请求:', {
+        url: apiUrl,
+        sdp: pc.localDescription?.sdp?.substring(0, 100) + '...',
+        params
       })
 
-      if (!response.ok) {
-        throw new Error(`服务器响应错误: ${response.status}`)
+      const response = await api.post(apiUrl, {
+        sdp: pc.localDescription?.sdp,
+      }, { params })
+
+      console.log('收到 WebRTC 响应:', response.data)
+
+      if (response.data.code !== 0) {
+        throw new Error(response.data.msg || '获取流失败')
       }
 
-      const contentType = response.headers.get('content-type')
-
-      // ZLMediaKit 返回 JSON 格式
-      if (contentType?.includes('application/json')) {
-        const jsonResponse = await response.json()
-
-        if (jsonResponse.code !== 0) {
-          throw new Error(jsonResponse.msg || '获取流失败')
-        }
-
-        if (!jsonResponse.sdp) {
-          throw new Error('服务器未返回 SDP')
-        }
-
-        await pc.setRemoteDescription(new RTCSessionDescription({
-          type: 'answer',
-          sdp: jsonResponse.sdp,
-        }))
-      } else {
-        // 纯 SDP 文本格式
-        const answerSdp = await response.text()
-        await pc.setRemoteDescription(new RTCSessionDescription({
-          type: 'answer',
-          sdp: answerSdp,
-        }))
+      if (!response.data.sdp) {
+        throw new Error('服务器未返回 SDP')
       }
+
+      await pc.setRemoteDescription(new RTCSessionDescription({
+        type: 'answer',
+        sdp: response.data.sdp,
+      }))
 
     } catch (err) {
       console.error('WebRTC 播放失败:', err)
       setStatus('error')
       setError(err instanceof Error ? err.message : '播放失败')
     }
-  }, [getStreamName])
+  }, [streamId, accessToken])
 
   // 停止播放
   const stopPlay = useCallback(() => {
