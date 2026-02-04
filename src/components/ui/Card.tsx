@@ -4,16 +4,19 @@ interface CardProps {
   children: React.ReactNode
   className?: string
   hover?: boolean
+  onClick?: () => void
 }
 
-export function Card({ children, className, hover = false }: CardProps) {
+export function Card({ children, className, hover = false, onClick }: CardProps) {
   return (
     <div
       className={cn(
         'glass-card p-6',
         hover && 'hover:border-gold-500/30 transition-all duration-300',
+        onClick && 'cursor-pointer',
         className
       )}
+      onClick={onClick}
     >
       {children}
     </div>

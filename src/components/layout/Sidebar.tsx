@@ -5,6 +5,7 @@ import {
   Home,
   LogOut,
   Tv,
+  Film,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/stores'
@@ -12,6 +13,7 @@ import { useAuthStore } from '@/stores'
 const navigation = [
   { name: '仪表盘', href: '/admin/dashboard', icon: LayoutDashboard },
   { name: '直播管理', href: '/admin/streams', icon: Radio },
+  { name: '回放管理', href: '/admin/recordings', icon: Film },
   { name: '返回首页', href: '/', icon: Home },
 ]
 

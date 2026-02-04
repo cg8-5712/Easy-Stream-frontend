@@ -284,29 +284,53 @@ export function GuestHomePage() {
                 className="group"
               >
                 <Card hover className="h-full transition-all duration-300 group-hover:border-gold-500/50">
-                  {/* Thumbnail placeholder */}
-                  <div className="relative aspect-video bg-dark-800 rounded-lg mb-4 overflow-hidden">
+                  {/* Thumbnail - Live Preview or Placeholder */}
+                  <div className="relative aspect-video bg-gradient-to-br from-dark-800 to-dark-900 rounded-lg mb-4 overflow-hidden">
+                    {/* TODO: Add actual video snapshot/preview using HLS snapshot or canvas capture */}
+                    {/* Placeholder with animated gradient */}
+                    <div className="absolute inset-0 bg-gradient-to-br from-gold-500/5 via-transparent to-blue-500/5 animate-gradient" />
+
                     <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="w-16 h-16 rounded-full bg-dark-700/50 flex items-center justify-center group-hover:bg-gold-500/20 transition-colors">
-                        <Play className="w-8 h-8 text-dark-400 group-hover:text-gold-400 transition-colors" />
+                      <div className="relative">
+                        {/* Pulsing rings */}
+                        <div className="absolute inset-0 rounded-full bg-gold-500/20 animate-ping" />
+                        <div className="relative w-16 h-16 rounded-full bg-dark-700/80 backdrop-blur-sm border border-gold-500/30 flex items-center justify-center group-hover:bg-gold-500/30 group-hover:border-gold-400/50 transition-all">
+                          <Play className="w-8 h-8 text-gold-400 group-hover:scale-110 transition-transform" fill="currentColor" />
+                        </div>
                       </div>
                     </div>
+
                     {/* Live badge */}
-                    <div className="absolute top-3 left-3 flex items-center gap-1.5 px-2 py-1 rounded-md bg-red-500/90 text-white text-xs font-medium">
+                    <div className="absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-red-500 text-white text-xs font-medium shadow-lg">
                       <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                      直播中
+                      LIVE
                     </div>
+
                     {/* Private badge */}
                     {stream.visibility === 'private' && (
-                      <div className="absolute top-3 right-3 flex items-center gap-1 px-2 py-1 rounded-md bg-yellow-500/90 text-dark-900 text-xs font-medium">
+                      <div className="absolute top-3 right-3 flex items-center gap-1 px-2 py-1 rounded-md bg-yellow-500 text-dark-900 text-xs font-medium shadow-lg">
                         <Lock className="w-3 h-3" />
                         私有
                       </div>
                     )}
-                    {/* Viewers */}
-                    <div className="absolute bottom-3 right-3 flex items-center gap-1 px-2 py-1 rounded-md bg-dark-900/80 text-dark-200 text-xs">
-                      <Eye className="w-3 h-3" />
+
+                    {/* Viewers count */}
+                    <div className="absolute bottom-3 right-3 flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-dark-900/90 backdrop-blur-sm text-dark-100 text-xs font-medium shadow-lg">
+                      <Eye className="w-3.5 h-3.5" />
                       {formatNumber(stream.current_viewers)}
+                    </div>
+
+                    {/* Stream info overlay on hover */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-dark-900/90 via-dark-900/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                      <div className="absolute bottom-4 left-4 right-4 text-xs text-dark-300 space-y-1">
+                        {stream.protocol && (
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-medium">{stream.protocol.toUpperCase()}</span>
+                            {stream.bitrate && <span>• {stream.bitrate} kbps</span>}
+                            {stream.fps && <span>• {stream.fps} fps</span>}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
 

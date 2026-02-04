@@ -55,6 +55,7 @@ export default {
         'pulse-gold': 'pulse-gold 2s ease-in-out infinite',
         'fade-in': 'fade-in 0.5s ease-out',
         'slide-up': 'slide-up 0.5s ease-out',
+        'gradient': 'gradient 3s ease infinite',
       },
       keyframes: {
         shimmer: {
@@ -72,6 +73,10 @@ export default {
         'slide-up': {
           '0%': { opacity: '0', transform: 'translateY(20px)' },
           '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        'gradient': {
+          '0%, 100%': { opacity: '0.3' },
+          '50%': { opacity: '0.6' },
         },
       },
     },

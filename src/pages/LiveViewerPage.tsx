@@ -261,10 +261,17 @@ export function LiveViewerPage() {
 
                     {/* Live indicator */}
                     <div className="absolute top-4 left-4 flex items-center gap-2 z-10 pointer-events-none">
-                      <span className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-red-500 text-white">
+                      <span className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-red-500 text-white shadow-lg">
                         <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
                         LIVE
                       </span>
+                      {/* Recording indicator */}
+                      {stream?.record_enabled && (
+                        <span className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-red-600 text-white shadow-lg animate-pulse">
+                          <span className="w-2 h-2 rounded-full bg-white" />
+                          录制中
+                        </span>
+                      )}
                     </div>
 
                     {/* Viewer count */}
@@ -303,26 +310,24 @@ export function LiveViewerPage() {
 
               {/* Stream info bar */}
               <div className="p-4 border-t border-dark-800 bg-dark-900/50">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-6 text-sm text-dark-400">
-                    {stream?.protocol && (
-                      <span className="flex items-center gap-1.5">
-                        <Activity className="w-4 h-4" />
-                        {stream.protocol.toUpperCase()}
-                      </span>
-                    )}
-                    {stream?.bitrate ? (
-                      <span>{stream.bitrate} kbps</span>
-                    ) : null}
-                    {stream?.fps ? (
-                      <span>{stream.fps} fps</span>
-                    ) : null}
-                  </div>
-
+                <div className="flex items-center gap-6 text-sm text-dark-400">
+                  {stream?.protocol && (
+                    <span className="flex items-center gap-1.5">
+                      <Activity className="w-4 h-4" />
+                      {stream.protocol.toUpperCase()}
+                    </span>
+                  )}
+                  {stream?.bitrate ? (
+                    <span>{stream.bitrate} kbps</span>
+                  ) : null}
+                  {stream?.fps ? (
+                    <span>{stream.fps} fps</span>
+                  ) : null}
                   {stream?.record_enabled && (
-                    <Badge variant="success" dot>
+                    <span className="flex items-center gap-1.5 text-red-400">
+                      <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
                       录制中
-                    </Badge>
+                    </span>
                   )}
                 </div>
               </div>
