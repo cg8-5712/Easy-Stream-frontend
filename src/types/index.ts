@@ -202,6 +202,32 @@ export interface HealthResponse {
   }
 }
 
+// Recording types
+export interface Recording {
+  id: number
+  stream_key: string
+  file_path: string
+  file_size: number
+  duration: number
+  start_time: string
+  end_time: string
+  created_at: string
+  stream?: Stream
+}
+
+export interface RecordingListResponse {
+  total: number
+  recordings: Recording[]
+}
+
+export interface RecordingListParams {
+  stream_key?: string
+  start_date?: string
+  end_date?: string
+  page?: number
+  page_size?: number
+}
+
 // API Error
 export interface ApiError {
   error: string

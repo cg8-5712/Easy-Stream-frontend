@@ -149,12 +149,6 @@ export function LoginPage() {
                 登录
               </Button>
             </form>
-
-            <div className="mt-6 text-center">
-              <p className="text-sm text-dark-500">
-                默认账号: admin / admin123
-              </p>
-            </div>
           </div>
 
           <p className="mt-8 text-center text-sm text-dark-600">

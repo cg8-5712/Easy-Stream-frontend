@@ -13,6 +13,7 @@ import {
   Github,
 } from 'lucide-react'
 import { Card, Button, Input, Modal, Badge } from '@/components/ui'
+import { StreamPreview } from '@/components/StreamPreview'
 import { streamService, shareLinkService } from '@/services'
 import { formatDate, formatNumber } from '@/lib/utils'
 import { useAuthStore } from '@/stores'
@@ -284,44 +285,37 @@ export function GuestHomePage() {
                 className="group"
               >
                 <Card hover className="h-full transition-all duration-300 group-hover:border-gold-500/50">
-                  {/* Thumbnail - Live Preview or Placeholder */}
-                  <div className="relative aspect-video bg-gradient-to-br from-dark-800 to-dark-900 rounded-lg mb-4 overflow-hidden">
-                    {/* TODO: Add actual video snapshot/preview using HLS snapshot or canvas capture */}
-                    {/* Placeholder with animated gradient */}
-                    <div className="absolute inset-0 bg-gradient-to-br from-gold-500/5 via-transparent to-blue-500/5 animate-gradient" />
-
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="relative">
-                        {/* Pulsing rings */}
-                        <div className="absolute inset-0 rounded-full bg-gold-500/20 animate-ping" />
-                        <div className="relative w-16 h-16 rounded-full bg-dark-700/80 backdrop-blur-sm border border-gold-500/30 flex items-center justify-center group-hover:bg-gold-500/30 group-hover:border-gold-400/50 transition-all">
-                          <Play className="w-8 h-8 text-gold-400 group-hover:scale-110 transition-transform" fill="currentColor" />
-                        </div>
-                      </div>
-                    </div>
+                  {/* Video Preview with hover play */}
+                  <div className="relative mb-4">
+                    <StreamPreview
+                      streamId={stream.id}
+                      streamName={stream.name}
+                      isLive={stream.status === 'pushing'}
+                      className="mb-0"
+                    />
 
                     {/* Live badge */}
-                    <div className="absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-red-500 text-white text-xs font-medium shadow-lg">
+                    <div className="absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-red-500 text-white text-xs font-medium shadow-lg z-10">
                       <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
                       LIVE
                     </div>
 
                     {/* Private badge */}
                     {stream.visibility === 'private' && (
-                      <div className="absolute top-3 right-3 flex items-center gap-1 px-2 py-1 rounded-md bg-yellow-500 text-dark-900 text-xs font-medium shadow-lg">
+                      <div className="absolute top-3 right-3 flex items-center gap-1 px-2 py-1 rounded-md bg-yellow-500 text-dark-900 text-xs font-medium shadow-lg z-10">
                         <Lock className="w-3 h-3" />
                         私有
                       </div>
                     )}
 
                     {/* Viewers count */}
-                    <div className="absolute bottom-3 right-3 flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-dark-900/90 backdrop-blur-sm text-dark-100 text-xs font-medium shadow-lg">
+                    <div className="absolute bottom-3 right-3 flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-dark-900/90 backdrop-blur-sm text-dark-100 text-xs font-medium shadow-lg z-10">
                       <Eye className="w-3.5 h-3.5" />
                       {formatNumber(stream.current_viewers)}
                     </div>
 
                     {/* Stream info overlay on hover */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-dark-900/90 via-dark-900/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                    <div className="absolute inset-0 bg-gradient-to-t from-dark-900/90 via-dark-900/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10">
                       <div className="absolute bottom-4 left-4 right-4 text-xs text-dark-300 space-y-1">
                         {stream.protocol && (
                           <div className="flex items-center gap-1.5">
@@ -363,12 +357,12 @@ export function GuestHomePage() {
       {/* Footer */}
       <footer className="border-t border-dark-800/50 mt-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="flex items-center justify-between text-sm text-dark-500">
-            <div className="flex items-center gap-2">
-              <Radio className="w-4 h-4 text-gold-500" />
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-dark-500">
+            <Link to="/about" className="flex items-center gap-2 hover:text-gold-400 transition-colors group">
+              <Radio className="w-4 h-4 text-gold-500 group-hover:text-gold-400 transition-colors" />
               <span>Easy Stream</span>
-            </div>
-            <div className="flex items-center gap-4">
+            </Link>
+            <div className="flex flex-wrap items-center justify-center gap-4">
               <div className="flex items-center gap-3">
                 <a
                   href="https://github.com/cg8-5712/Easy-Stream-frontend"
@@ -393,7 +387,15 @@ export function GuestHomePage() {
                 </a>
               </div>
               <span className="text-dark-700">|</span>
-              <p>Powered by Easy Stream Platform</p>
+              <div className="flex items-center gap-3">
+                <Link to="/terms" className="hover:text-gold-400 transition-colors">
+                  Terms
+                </Link>
+                <span className="text-dark-700">|</span>
+                <Link to="/privacy" className="hover:text-gold-400 transition-colors">
+                  Privacy
+                </Link>
+              </div>
             </div>
           </div>
         </div>

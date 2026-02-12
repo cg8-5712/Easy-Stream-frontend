@@ -1,7 +1,18 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MainLayout } from '@/components/layout'
-import { LoginPage, DashboardPage, StreamsPage, StreamDetailPage, LiveViewerPage, GuestHomePage, RecordingsPage } from '@/pages'
+import {
+  LoginPage,
+  DashboardPage,
+  StreamsPage,
+  StreamDetailPage,
+  LiveViewerPage,
+  GuestHomePage,
+  RecordingsPage,
+  AboutPage,
+  TermsPage,
+  PrivacyPage
+} from '@/pages'
 import { useAuthStore } from '@/stores'
 
 const queryClient = new QueryClient({
@@ -33,6 +44,9 @@ function App() {
           <Route path="/" element={<GuestHomePage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/live/view/:id" element={<LiveViewerPage />} />
+          <Route path="/about" element={<AboutPage />} />
+          <Route path="/terms" element={<TermsPage />} />
+          <Route path="/privacy" element={<PrivacyPage />} />
 
           {/* Protected routes (Admin) */}
           <Route
