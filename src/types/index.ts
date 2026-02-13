@@ -203,29 +203,47 @@ export interface HealthResponse {
 }
 
 // Recording types
-export interface Recording {
-  id: number
-  stream_key: string
+export interface RecordFileUrls {
+  download: string
+  s3?: string
+  cos?: string
+  oss?: string
+}
+
+export interface RecordFile {
+  file_name: string
   file_path: string
   file_size: number
   duration: number
-  start_time: string
-  end_time: string
+  start_time: number
   created_at: string
-  stream?: Stream
+  urls: RecordFileUrls
+}
+
+export interface StreamWithRecords {
+  id: number
+  stream_key: string
+  name: string
+  record_status: string
+  record_files: RecordFile[]
 }
 
 export interface RecordingListResponse {
   total: number
-  recordings: Recording[]
+  streams: StreamWithRecords[]
 }
 
 export interface RecordingListParams {
-  stream_key?: string
-  start_date?: string
-  end_date?: string
   page?: number
-  page_size?: number
+  pageSize?: number
+}
+
+export interface StreamRecordingResponse {
+  stream_id: number
+  stream_key: string
+  stream_name: string
+  record_files: RecordFile[]
+  record_status: string
 }
 
 // API Error
