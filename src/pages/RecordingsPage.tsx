@@ -34,7 +34,7 @@ export function RecordingsPage() {
   }
 
   const handlePlay = (streamKey: string, fileName: string, streamName: string) => {
-    const url = recordingService.getDownloadUrl(streamKey, fileName)
+    const url = recordingService.getPlayUrl(streamKey, fileName)
     setPlayingVideo({
       url,
       title: `${streamName} - ${fileName}`,

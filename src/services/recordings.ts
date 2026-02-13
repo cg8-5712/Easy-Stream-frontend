@@ -23,6 +23,11 @@ export const recordingService = {
     await api.delete(`/records/${streamKey}/delete/${encodeURIComponent(fileName)}`)
   },
 
+  // 获取录制文件播放URL（支持 HTTP Range，可拖拽进度条）
+  getPlayUrl(streamKey: string, fileName: string): string {
+    return `${api.defaults.baseURL}/records/${streamKey}/play/${encodeURIComponent(fileName)}`
+  },
+
   // 获取录制文件下载URL
   getDownloadUrl(streamKey: string, fileName: string): string {
     return `${api.defaults.baseURL}/records/${streamKey}/download/${encodeURIComponent(fileName)}`
