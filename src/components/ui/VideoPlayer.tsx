@@ -26,14 +26,9 @@ export function VideoPlayer({ src, title, className, requireAuth = true }: Video
 
       try {
         const token = localStorage.getItem('access_token')
-        console.log('VideoPlayer - Token:', token ? 'exists' : 'missing')
-        console.log('VideoPlayer - URL:', src)
-
         const response = await fetch(src, {
           headers: token ? { 'Authorization': `Bearer ${token}` } : {}
         })
-
-        console.log('VideoPlayer - Response status:', response.status)
 
         if (!response.ok) {
           throw new Error(`Failed to load video: ${response.status}`)
@@ -44,7 +39,7 @@ export function VideoPlayer({ src, title, className, requireAuth = true }: Video
         setBlobUrl(url)
       } catch (err) {
         console.error('Video load error:', err)
-        setError('视频加载失败: ' + err)
+        setError('视频加载失败')
       } finally {
         setLoading(false)
       }
