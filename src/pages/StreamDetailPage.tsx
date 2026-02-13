@@ -58,9 +58,9 @@ export function StreamDetailPage() {
     }
   }
 
-  const fetchShareLinks = async (streamKey: string) => {
+  const fetchShareLinks = async () => {
     try {
-      const data = await shareLinkService.getShareLinks(streamKey)
+      const data = await shareLinkService.getShareLinks()
       setShareLinks(data.links || [])
     } catch (error) {
       console.error('Failed to fetch share links:', error)
@@ -76,7 +76,7 @@ export function StreamDetailPage() {
         setStream(streamData)
         setShareCodeMaxUses(streamData.share_code_max_uses || 0)
         if (streamData.visibility === 'private') {
-          await fetchShareLinks(streamData.stream_key)
+          await fetchShareLinks()
         }
       } catch (error) {
         console.error('Failed to fetch stream:', error)
@@ -128,7 +128,7 @@ export function StreamDetailPage() {
       await shareLinkService.createShareLink(stream.stream_key, {
         max_uses: newLinkMaxUses,
       })
-      await fetchShareLinks(stream.stream_key)
+      await fetchShareLinks()
       setShowCreateLinkModal(false)
       setNewLinkMaxUses(0)
     } catch (error) {
@@ -142,8 +142,8 @@ export function StreamDetailPage() {
     if (!selectedLink || !stream) return
     setActionLoading(true)
     try {
-      await shareLinkService.deleteShareLink(selectedLink.id)
-      await fetchShareLinks(stream.stream_key)
+      await shareLinkService.deleteShareLink(selectedLink.token)
+      await fetchShareLinks()
       setShowDeleteLinkModal(false)
       setSelectedLink(null)
     } catch (error) {

@@ -9,7 +9,7 @@ interface StreamPreviewProps {
   className?: string
 }
 
-export function StreamPreview({ streamId, streamName, isLive, className = '' }: StreamPreviewProps) {
+export function StreamPreview({ streamId, isLive, className = '' }: StreamPreviewProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const hlsRef = useRef<Hls | null>(null)
   const [isHovered, setIsHovered] = useState(false)
@@ -59,7 +59,7 @@ export function StreamPreview({ streamId, streamName, isLive, className = '' }: 
         })
       })
 
-      hls.on(Hls.Events.ERROR, (event, data) => {
+      hls.on(Hls.Events.ERROR, (_event, data) => {
         console.error('HLS error:', data)
         if (data.fatal) {
           setHasError(true)

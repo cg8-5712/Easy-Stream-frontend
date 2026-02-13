@@ -1,9 +1,10 @@
 interface HeaderProps {
   title: string
   subtitle?: string
+  action?: React.ReactNode
 }
 
-export function Header({ title, subtitle }: HeaderProps) {
+export function Header({ title, subtitle, action }: HeaderProps) {
   return (
     <header className="h-16 flex items-center justify-between px-8 border-b border-dark-800 bg-dark-950/50 backdrop-blur-sm">
       <div>
@@ -12,6 +13,7 @@ export function Header({ title, subtitle }: HeaderProps) {
           <p className="text-sm text-dark-500">{subtitle}</p>
         )}
       </div>
+      {action && <div>{action}</div>}
     </header>
   )
 }

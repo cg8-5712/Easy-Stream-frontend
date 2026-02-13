@@ -21,7 +21,7 @@ import { Button, Card, Input, StatusBadge, Badge, Modal, WebRTCPlayer } from '@/
 import { streamService, shareLinkService } from '@/services'
 import { useAuthStore } from '@/stores'
 import { formatDate, formatNumber } from '@/lib/utils'
-import type { StreamView, Stream } from '@/types'
+import type { StreamView } from '@/types'
 
 export function LiveViewerPage() {
   const { id } = useParams<{ id: string }>()
@@ -253,7 +253,6 @@ export function LiveViewerPage() {
                     {/* WebRTC Player */}
                     <WebRTCPlayer
                       streamId={stream.id}
-                      streamKey={streamKey || undefined}
                       className="absolute inset-0"
                       autoPlay={true}
                       muted={true}

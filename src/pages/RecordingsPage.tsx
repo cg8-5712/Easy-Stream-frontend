@@ -26,11 +26,32 @@ export function RecordingsPage() {
     },
   })
 
-  const handleDownload = (streamKey: string, fileName: string) => {
-    // 使用简单的直接跳转方式（适用于公开直播）
-    // 如果是私有直播，需要传入 token
+  const handleDownload = async (streamKey: string, fileName: string) => {
+    const token = localStorage.getItem('access_token')
     const url = recordingService.getDownloadUrl(streamKey, fileName)
-    window.location.href = url
+
+    try {
+      const response = await fetch(url, {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      })
+
+      if (!response.ok) {
+        throw new Error(`Download failed: ${response.status}`)
+      }
+
+      const blob = await response.blob()
+      const downloadUrl = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = downloadUrl
+      a.download = fileName
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      window.URL.revokeObjectURL(downloadUrl)
+    } catch (error) {
+      console.error('Download error:', error)
+      alert('下载失败')
+    }
   }
 
   const handlePlay = (streamKey: string, fileName: string, streamName: string) => {
