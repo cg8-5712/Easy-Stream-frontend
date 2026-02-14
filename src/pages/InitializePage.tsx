@@ -93,7 +93,7 @@ export function InitializePage() {
       await authService.initializeAdmin(formData)
       // 初始化成功后跳转到登录页
       navigate('/login', {
-        state: { message: '系统初始化成功，请登录' }
+        state: { message: '系统初始化成功！配置已保存，请重启服务器后登录。' }
       })
     } catch (err: unknown) {
       const error = err as { response?: { data?: { error?: string } } }
