@@ -18,6 +18,8 @@ export function InitializePage() {
     // 管理员配置
     username: 'admin',
     password: '',
+    real_name: '',
+    email: '',
     // 数据库配置
     database_type: 'sqlite',
     database_filepath: './easy_stream.db',
@@ -115,6 +117,25 @@ export function InitializePage() {
               required
               minLength={3}
               maxLength={50}
+            />
+
+            <Input
+              label="真实姓名"
+              placeholder="请输入真实姓名"
+              icon={<User className="w-4 h-4" />}
+              value={formData.real_name}
+              onChange={(e) => setFormData({ ...formData, real_name: e.target.value })}
+              required
+            />
+
+            <Input
+              label="邮箱"
+              type="email"
+              placeholder="请输入邮箱地址"
+              icon={<User className="w-4 h-4" />}
+              value={formData.email}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              required
             />
 
             <div className="relative">

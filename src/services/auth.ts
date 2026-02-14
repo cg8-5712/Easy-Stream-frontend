@@ -14,6 +14,8 @@ export interface InitStatusResponse {
 export interface InitializeAdminRequest {
   username: string
   password: string
+  real_name: string
+  email: string
   // 数据库配置
   database_type: 'sqlite' | 'postgres' | 'mysql'
   database_filepath: string
