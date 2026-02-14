@@ -58,7 +58,112 @@ export function InitializePage() {
 
   const currentStepIndex = steps.findIndex(s => s.id === currentStep)
 
+  const validateCurrentStep = (): boolean => {
+    setError('')
+
+    switch (currentStep) {
+      case 'admin':
+        // 验证管理员信息
+        if (!formData.username || formData.username.length < 3) {
+          setError('用户名至少需要 3 个字符')
+          return false
+        }
+        if (!formData.real_name) {
+          setError('请输入真实姓名')
+          return false
+        }
+        if (!formData.email) {
+          setError('请输入邮箱地址')
+          return false
+        }
+        // 简单的邮箱格式验证
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+        if (!emailRegex.test(formData.email)) {
+          setError('邮箱格式不正确')
+          return false
+        }
+        if (!formData.password || formData.password.length < 6) {
+          setError('密码长度至少为 6 个字符')
+          return false
+        }
+        if (formData.password !== confirmPassword) {
+          setError('两次输入的密码不一致')
+          return false
+        }
+        break
+
+      case 'database':
+        // 验证数据库配置
+        if (!formData.database_type) {
+          setError('请选择数据库类型')
+          return false
+        }
+        if (formData.database_type === 'sqlite') {
+          if (!formData.database_filepath) {
+            setError('请输入数据库文件路径')
+            return false
+          }
+        } else {
+          if (!formData.database_host) {
+            setError('请输入数据库主机地址')
+            return false
+          }
+          if (!formData.database_port) {
+            setError('请输入数据库端口')
+            return false
+          }
+          if (!formData.database_user) {
+            setError('请输入数据库用户名')
+            return false
+          }
+          if (!formData.database_name) {
+            setError('请输入数据库名称')
+            return false
+          }
+        }
+        break
+
+      case 'redis':
+        // 验证 Redis 配置
+        if (!formData.redis_host) {
+          setError('请输入 Redis 主机地址')
+          return false
+        }
+        if (!formData.redis_port) {
+          setError('请输入 Redis 端口')
+          return false
+        }
+        break
+
+      case 'zlm':
+        // 验证 ZLMediaKit 配置
+        if (!formData.zlm_host) {
+          setError('请输入 ZLMediaKit 主机地址')
+          return false
+        }
+        if (!formData.zlm_port) {
+          setError('请输入 ZLMediaKit 端口')
+          return false
+        }
+        break
+
+      case 'server':
+        // 验证服务器配置
+        if (!formData.server_port) {
+          setError('请输入服务器端口')
+          return false
+        }
+        break
+    }
+
+    return true
+  }
+
   const handleNext = () => {
+    if (!validateCurrentStep()) {
+      return
+    }
+
     if (currentStepIndex < steps.length - 1) {
       setCurrentStep(steps[currentStepIndex + 1].id)
       setError('')
@@ -74,16 +179,9 @@ export function InitializePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError('')
 
-    // 验证密码
-    if (formData.password.length < 6) {
-      setError('密码长度至少为 6 个字符')
-      return
-    }
-
-    if (formData.password !== confirmPassword) {
-      setError('两次输入的密码不一致')
+    // 最后一步也需要验证
+    if (!validateCurrentStep()) {
       return
     }
 
