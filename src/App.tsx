@@ -1,8 +1,10 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { useEffect, useState } from 'react'
 import { MainLayout } from '@/components/layout'
 import {
   LoginPage,
+  InitializePage,
   DashboardPage,
   StreamsPage,
   StreamDetailPage,
@@ -14,6 +16,7 @@ import {
   PrivacyPage
 } from '@/pages'
 import { useAuthStore } from '@/stores'
+import { authService } from '@/services'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -36,6 +39,48 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 function App() {
+  const [initialized, setInitialized] = useState<boolean | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    // 检查是否已初始化
+    const checkInitStatus = async () => {
+      try {
+        const status = await authService.checkInitStatus()
+        setInitialized(status.initialized)
+      } catch (error) {
+        console.error('Failed to check init status:', error)
+        setInitialized(true) // 出错时假设已初始化，避免阻塞
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    checkInitStatus()
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-dark-950">
+        <div className="text-dark-400">加载中...</div>
+      </div>
+    )
+  }
+
+  // 如果未初始化，重定向到初始化页面
+  if (initialized === false) {
+    return (
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/initialize" element={<InitializePage />} />
+            <Route path="*" element={<Navigate to="/initialize" replace />} />
+          </Routes>
+        </BrowserRouter>
+      </QueryClientProvider>
+    )
+  }
+
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>

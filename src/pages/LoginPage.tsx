@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { Tv, User, Lock, Eye, EyeOff } from 'lucide-react'
 import { Button, Input } from '@/components/ui'
 import { authService } from '@/services'
@@ -7,6 +7,7 @@ import { useAuthStore } from '@/stores'
 
 export function LoginPage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { setAuth } = useAuthStore()
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -15,6 +16,9 @@ export function LoginPage() {
     username: '',
     password: '',
   })
+
+  // 从 location state 获取消息
+  const successMessage = (location.state as { message?: string })?.message
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -106,6 +110,12 @@ export function LoginPage() {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-6">
+              {successMessage && (
+                <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/30 text-green-400 text-sm">
+                  {successMessage}
+                </div>
+              )}
+
               {error && (
                 <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
                   {error}

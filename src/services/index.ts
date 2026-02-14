@@ -1,5 +1,5 @@
 export { api } from './api'
-export { authService } from './auth'
+export { authService, type InitializeAdminRequest, type InitStatusResponse } from './auth'
 export { streamService } from './streams'
 export { shareLinkService } from './shareLinks'
 export { systemService } from './system'
