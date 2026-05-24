@@ -16,7 +16,7 @@ import {
   PrivacyPage
 } from '@/pages'
 import { useAuthStore } from '@/stores'
-import { authService } from '@/services'
+import { authService, type InitStatusResponse } from '@/services'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -39,18 +39,22 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 function App() {
-  const [initialized, setInitialized] = useState<boolean | null>(null)
+  const [initStatus, setInitStatus] = useState<InitStatusResponse | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // 检查是否已初始化
     const checkInitStatus = async () => {
       try {
         const status = await authService.checkInitStatus()
-        setInitialized(status.initialized)
+        setInitStatus(status)
       } catch (error) {
         console.error('Failed to check init status:', error)
-        setInitialized(true) // 出错时假设已初始化，避免阻塞
+        setInitStatus({
+          initialized: true,
+          config_exists: true,
+          needs_admin_setup: false,
+          can_write_config: false,
+        })
       } finally {
         setLoading(false)
       }
@@ -59,7 +63,7 @@ function App() {
     checkInitStatus()
   }, [])
 
-  if (loading) {
+  if (loading || !initStatus) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-dark-950">
         <div className="text-dark-400">加载中...</div>
@@ -67,13 +71,12 @@ function App() {
     )
   }
 
-  // 如果未初始化，重定向到初始化页面
-  if (initialized === false) {
+  if (!initStatus.initialized || initStatus.needs_admin_setup) {
     return (
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
           <Routes>
-            <Route path="/initialize" element={<InitializePage />} />
+            <Route path="/initialize" element={<InitializePage initStatus={initStatus} />} />
             <Route path="*" element={<Navigate to="/initialize" replace />} />
           </Routes>
         </BrowserRouter>

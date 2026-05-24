@@ -2,12 +2,17 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Tv, User, Lock, Eye, EyeOff, Shield, Database, Server, Zap, ChevronRight, ChevronLeft } from 'lucide-react'
 import { Button, Input } from '@/components/ui'
-import { authService, type InitializeAdminRequest } from '@/services'
+import { authService, type InitializeAdminRequest, type InitStatusResponse } from '@/services'
 
 type Step = 'admin' | 'database' | 'redis' | 'zlm' | 'server'
 
-export function InitializePage() {
+interface InitializePageProps {
+  initStatus?: InitStatusResponse
+}
+
+export function InitializePage({ initStatus }: InitializePageProps) {
   const navigate = useNavigate()
+  const adminOnlyMode = !!initStatus?.needs_admin_setup
   const [currentStep, setCurrentStep] = useState<Step>('admin')
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
@@ -15,12 +20,10 @@ export function InitializePage() {
   const [error, setError] = useState('')
 
   const [formData, setFormData] = useState<InitializeAdminRequest>({
-    // 管理员配置
     username: 'admin',
     password: '',
     real_name: '',
     email: '',
-    // 数据库配置
     database_type: 'sqlite',
     database_filepath: './easy_stream.db',
     database_host: 'localhost',
@@ -29,32 +32,30 @@ export function InitializePage() {
     database_password: '',
     database_name: 'easy_stream',
     database_sslmode: 'disable',
-    // Redis 配置
     redis_host: 'localhost',
     redis_port: '6379',
     redis_password: '',
     redis_db: 0,
-    // ZLMediaKit 配置
     zlm_host: 'localhost',
     zlm_port: '80',
     zlm_secret: '',
     zlm_hook_base_url: '',
-    // JWT 配置
     jwt_secret: '',
-    // 服务器配置
     server_host: '0.0.0.0',
     server_port: '8080',
   })
 
   const [confirmPassword, setConfirmPassword] = useState('')
 
-  const steps: { id: Step; title: string; icon: React.ReactNode }[] = [
-    { id: 'admin', title: '管理员账号', icon: <User className="w-5 h-5" /> },
-    { id: 'database', title: '数据库配置', icon: <Database className="w-5 h-5" /> },
-    { id: 'redis', title: 'Redis 配置', icon: <Server className="w-5 h-5" /> },
-    { id: 'zlm', title: 'ZLMediaKit', icon: <Zap className="w-5 h-5" /> },
-    { id: 'server', title: '服务器配置', icon: <Shield className="w-5 h-5" /> },
-  ]
+  const steps: { id: Step; title: string; icon: React.ReactNode }[] = adminOnlyMode
+    ? [{ id: 'admin', title: '管理员账号', icon: <User className="w-5 h-5" /> }]
+    : [
+        { id: 'admin', title: '管理员账号', icon: <User className="w-5 h-5" /> },
+        { id: 'database', title: '数据库配置', icon: <Database className="w-5 h-5" /> },
+        { id: 'redis', title: 'Redis 配置', icon: <Server className="w-5 h-5" /> },
+        { id: 'zlm', title: 'ZLMediaKit', icon: <Zap className="w-5 h-5" /> },
+        { id: 'server', title: '服务器配置', icon: <Shield className="w-5 h-5" /> },
+      ]
 
   const currentStepIndex = steps.findIndex(s => s.id === currentStep)
 
@@ -62,8 +63,7 @@ export function InitializePage() {
     setError('')
 
     switch (currentStep) {
-      case 'admin':
-        // 验证管理员信息
+      case 'admin': {
         if (!formData.username || formData.username.length < 3) {
           setError('用户名至少需要 3 个字符')
           return false
@@ -76,7 +76,6 @@ export function InitializePage() {
           setError('请输入邮箱地址')
           return false
         }
-        // 简单的邮箱格式验证
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
         if (!emailRegex.test(formData.email)) {
           setError('邮箱格式不正确')
@@ -91,9 +90,8 @@ export function InitializePage() {
           return false
         }
         break
-
+      }
       case 'database':
-        // 验证数据库配置
         if (!formData.database_type) {
           setError('请选择数据库类型')
           return false
@@ -122,9 +120,7 @@ export function InitializePage() {
           }
         }
         break
-
       case 'redis':
-        // 验证 Redis 配置
         if (!formData.redis_host) {
           setError('请输入 Redis 主机地址')
           return false
@@ -134,9 +130,7 @@ export function InitializePage() {
           return false
         }
         break
-
       case 'zlm':
-        // 验证 ZLMediaKit 配置
         if (!formData.zlm_host) {
           setError('请输入 ZLMediaKit 主机地址')
           return false
@@ -146,9 +140,7 @@ export function InitializePage() {
           return false
         }
         break
-
       case 'server':
-        // 验证服务器配置
         if (!formData.server_port) {
           setError('请输入服务器端口')
           return false
@@ -180,7 +172,6 @@ export function InitializePage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    // 最后一步也需要验证
     if (!validateCurrentStep()) {
       return
     }
@@ -189,9 +180,12 @@ export function InitializePage() {
 
     try {
       await authService.initializeAdmin(formData)
-      // 初始化成功后跳转到登录页
       navigate('/login', {
-        state: { message: '系统初始化成功！配置已保存，请重启服务器后登录。' }
+        state: {
+          message: adminOnlyMode
+            ? '管理员账号已创建，请直接登录。'
+            : '系统初始化成功！配置已保存，请重启服务器后登录。'
+        }
       })
     } catch (err: unknown) {
       const error = err as { response?: { data?: { error?: string } } }
@@ -206,6 +200,12 @@ export function InitializePage() {
       case 'admin':
         return (
           <div className="space-y-4">
+            {adminOnlyMode && (
+              <div className="p-4 rounded-lg bg-blue-500/10 border border-blue-500/30 text-blue-300 text-sm">
+                检测到现有 config.yaml，当前只需创建管理员账号，不会改写配置文件。
+              </div>
+            )}
+
             <Input
               label="用户名"
               placeholder="请输入管理员用户名"
@@ -450,7 +450,6 @@ export function InitializePage() {
 
   return (
     <div className="min-h-screen flex bg-dark-950">
-      {/* Left side - Progress */}
       <div className="hidden lg:flex lg:w-1/3 relative overflow-hidden border-r border-dark-800">
         <div className="absolute inset-0 bg-gradient-to-br from-dark-900 via-dark-950 to-dark-950" />
 
@@ -465,7 +464,7 @@ export function InitializePage() {
           </div>
 
           <h2 className="text-2xl font-light text-dark-200 mb-8">
-            系统初始化向导
+            {adminOnlyMode ? '管理员创建向导' : '系统初始化向导'}
           </h2>
 
           <div className="space-y-4">
@@ -511,10 +510,8 @@ export function InitializePage() {
         </div>
       </div>
 
-      {/* Right side - Form */}
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="w-full max-w-2xl">
-          {/* Mobile logo */}
           <div className="lg:hidden flex items-center justify-center gap-3 mb-8">
             <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-gold-400 to-gold-600 flex items-center justify-center shadow-gold">
               <Tv className="w-6 h-6 text-dark-950" />
@@ -573,7 +570,7 @@ export function InitializePage() {
                     className="flex-1"
                     loading={loading}
                   >
-                    完成初始化
+                    {adminOnlyMode ? '创建管理员' : '完成初始化'}
                   </Button>
                 )}
               </div>

@@ -9,6 +9,9 @@ import type {
 
 export interface InitStatusResponse {
   initialized: boolean
+  config_exists: boolean
+  needs_admin_setup: boolean
+  can_write_config: boolean
 }
 
 export interface InitializeAdminRequest {
